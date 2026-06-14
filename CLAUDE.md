@@ -1,6 +1,11 @@
 # assignment_tracker_app — Claude guidance
 
-Flutter port of the FastAPI dashboard at `../assignment-tracker/`. Targets iOS, Android, and Web.
+Flutter port of the FastAPI dashboard at `../assignment-tracker/`. Targets iOS, Android, and macOS. Web is intentionally not supported (CORS would force a server proxy back into the architecture; the plan is to call Canvas and Synergy directly from native clients).
+
+## macOS notes
+
+- Sandbox is on by default. Network entitlements live in `macos/Runner/DebugProfile.entitlements` and `Release.entitlements` — `com.apple.security.network.client` is required for any outbound HTTP. Without it, calls fail silently.
+- Credentials use `flutter_secure_storage` (Keychain on macOS, same API as iOS).
 
 ## Required versions
 
@@ -31,4 +36,4 @@ Backend stays on FastAPI. Auth (v1) is dev-mode only — bootstrap with `GET /?u
 
 ## Cross-platform cookies
 
-`dio_cookie_manager` is a no-op on Web — browsers own cookies there. Use conditional imports (`lib/api/auth_transport_*.dart`): mobile uses `PersistCookieJar` + `flutter_secure_storage`; web uses `BrowserHttpClientAdapter()..withCredentials = true` and lets the browser persist.
+All targets are native (iOS, Android, macOS), so `dio_cookie_manager` + `PersistCookieJar` + `flutter_secure_storage` works uniformly — no conditional imports needed. The `lib/api/auth_transport*.dart` shim exists from the prior web target and can be collapsed once the FastAPI backend is removed.
