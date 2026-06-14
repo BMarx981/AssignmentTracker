@@ -12,13 +12,18 @@ import 'package:path_provider/path_provider.dart';
 /// ```
 /// <appSupport>/state/
 ///   grade_bands.json
+///   canvas_data.json        ← full multi-student fetch snapshot
+///   synergy_data.json       ← full multi-student fetch snapshot
 ///   students/<student_id>/
 ///     assignment_status.json
 ///     comments.json
 ///     score_thresholds.json
-///     canvas_data.json
-///     synergy_data.json
 /// ```
+///
+/// Canvas and Synergy fetches each produce a single payload covering all
+/// students, so they're stored as top-level blobs. Per-student state
+/// (statuses, comments, thresholds) lives in subdirectories so partial
+/// updates don't rewrite unrelated students' data.
 ///
 /// All writes are atomic (write-temp + rename) so a crash mid-write can't
 /// corrupt a JSON file. Reads return `null` for missing files; callers decide
@@ -73,6 +78,24 @@ class LocalStore {
   Future<void> writeGradeBands(Map<String, dynamic> bands) =>
       _writeJson('grade_bands.json', bands);
 
+  // ---------- raw fetch snapshots (multi-student blobs) ----------
+
+  Future<Map<String, dynamic>?> readCanvasData() async {
+    final raw = await _readJson('canvas_data.json');
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
+  Future<void> writeCanvasData(Map<String, dynamic> data) =>
+      _writeJson('canvas_data.json', data);
+
+  Future<Map<String, dynamic>?> readSynergyData() async {
+    final raw = await _readJson('synergy_data.json');
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
+  Future<void> writeSynergyData(Map<String, dynamic> data) =>
+      _writeJson('synergy_data.json', data);
+
   // ---------- per-student ----------
 
   String _studentDir(String studentId) => 'students/${_safeId(studentId)}';
@@ -113,28 +136,6 @@ class LocalStore {
         '${_studentDir(studentId)}/score_thresholds.json',
         thresholds,
       );
-
-  Future<Map<String, dynamic>?> readCanvasData(String studentId) async {
-    final raw = await _readJson('${_studentDir(studentId)}/canvas_data.json');
-    return raw is Map ? raw.cast<String, dynamic>() : null;
-  }
-
-  Future<void> writeCanvasData(
-    String studentId,
-    Map<String, dynamic> data,
-  ) =>
-      _writeJson('${_studentDir(studentId)}/canvas_data.json', data);
-
-  Future<Map<String, dynamic>?> readSynergyData(String studentId) async {
-    final raw = await _readJson('${_studentDir(studentId)}/synergy_data.json');
-    return raw is Map ? raw.cast<String, dynamic>() : null;
-  }
-
-  Future<void> writeSynergyData(
-    String studentId,
-    Map<String, dynamic> data,
-  ) =>
-      _writeJson('${_studentDir(studentId)}/synergy_data.json', data);
 
   Future<void> deleteStudent(String studentId) async {
     final dir = Directory('${_root.path}/${_studentDir(studentId)}');
