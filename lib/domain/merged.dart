@@ -71,6 +71,7 @@ class MergedItem {
 class MergedCourse {
   final String name;
   final String? teacher;
+  final String? teacherEmail;
   final String? synergyLetter;
   final double? synergyPercent; // 0..1 fraction (matches JS where /100 was applied)
   final bool synergyPercentIsComputed;
@@ -84,6 +85,7 @@ class MergedCourse {
   const MergedCourse({
     required this.name,
     this.teacher,
+    this.teacherEmail,
     this.synergyLetter,
     this.synergyPercent,
     this.synergyPercentIsComputed = false,
@@ -275,6 +277,7 @@ MergedCourse _buildMerged(CanvasCourse? cc, SynergyCourse? syn) {
   return MergedCourse(
     name: name,
     teacher: syn?.teacher,
+    teacherEmail: syn?.teacherEmail,
     synergyLetter: syn?.letterGrade,
     synergyPercent: synergyPercent,
     synergyPercentIsComputed: synergyPercentIsComputed,

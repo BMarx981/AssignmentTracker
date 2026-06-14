@@ -6,10 +6,14 @@ import '../domain/priority.dart';
 import '../models/api_models.dart';
 import '../state/assignment_actions.dart';
 import '../state/student_providers.dart';
+import '../util/gmail_launcher.dart';
 import 'status_badges.dart';
 
+const _talkToTeacherLabel = '🗣 Talk to teacher';
+const _talkToTeacherNote = 'Need to talk to teacher about this.';
+
 const _quickNotes = [
-  ('🗣 Talk to teacher', 'Need to talk to teacher about this.'),
+  (_talkToTeacherLabel, _talkToTeacherNote),
   ('📨 Thought I handed in', 'I thought this was done and handed in.'),
   (
     '⏳ Submitted, not graded',
@@ -247,11 +251,65 @@ class AssignmentCard extends ConsumerWidget {
                   : const Color(0xFFF1F5F9),
               foreground:
                   posted ? const Color(0xFF065F46) : const Color(0xFF334155),
-              onTap: () => actions.postComment(key: item.key, text: text),
+              onTap: () async {
+                final messenger = ScaffoldMessenger.maybeOf(context);
+                await actions.postComment(key: item.key, text: text);
+                if (label == _talkToTeacherLabel) {
+                  await _launchTeacherEmail(messenger, student);
+                }
+              },
             );
           }(),
       ],
     );
+  }
+
+  Future<void> _launchTeacherEmail(
+      ScaffoldMessengerState? messenger, Student? student) async {
+    final email = course.teacherEmail?.trim();
+    if (email == null || email.isEmpty) {
+      messenger?.showSnackBar(SnackBar(
+        content: Text(course.teacher == null
+            ? "No teacher email on file for this course."
+            : "No email on file for ${course.teacher}."),
+      ));
+      return;
+    }
+
+    final subject = '${course.name}: ${item.name}';
+    final body = _emailBody(student);
+    final ok =
+        await openGmailCompose(to: email, subject: subject, body: body);
+    if (!ok) {
+      messenger?.showSnackBar(
+          const SnackBar(content: Text("Couldn't open Gmail compose window.")));
+    }
+  }
+
+  String _emailBody(Student? student) {
+    final teacherSalutation = _shortTeacherSalutation(course.teacher);
+    final due = item.date == null ? '' : ' (due ${item.date})';
+    final pts = item.pointsPossible;
+    final ptsLabel = pts == null
+        ? ''
+        : ', ${pts == pts.roundToDouble() ? pts.toInt() : pts.toStringAsFixed(1)} pts';
+    final signOff = (student?.name.isNotEmpty ?? false) ? student!.name : '';
+    return 'Hi $teacherSalutation,\n\n'
+        "I'm reaching out about ${item.name}$due$ptsLabel in ${course.name}.\n\n"
+        "\n\n"
+        'Thanks,\n$signOff';
+  }
+
+  /// "Jane Smith" → "Ms./Mr. Smith" isn't possible without a gender field, so
+  /// we settle for the last name alone — most teachers are addressed that way
+  /// in the email itself. "Smith, Jane" also collapses to "Smith".
+  String _shortTeacherSalutation(String? teacher) {
+    if (teacher == null || teacher.trim().isEmpty) return 'there';
+    final t = teacher.trim();
+    final comma = RegExp(r'^([^,]+),').firstMatch(t);
+    if (comma != null) return comma.group(1)!.trim();
+    final parts = t.split(RegExp(r'\s+'));
+    return parts.length > 1 ? parts.last : t;
   }
 
   Widget _chip(

@@ -33,6 +33,7 @@ class TrackerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final router = buildRouter(initialLocation: initialLocation);
     return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
       title: 'Assignment Tracker',
       theme: ThemeData(
         useMaterial3: true,

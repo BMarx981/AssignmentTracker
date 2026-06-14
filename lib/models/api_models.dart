@@ -89,6 +89,7 @@ class SynergyAssignment {
 class SynergyCourse {
   final String synergyName;
   final String? teacher;
+  final String? teacherEmail;
   final String? letterGrade;
   final double? percent;
   final double? computedPercent;
@@ -100,6 +101,7 @@ class SynergyCourse {
   const SynergyCourse({
     required this.synergyName,
     this.teacher,
+    this.teacherEmail,
     this.letterGrade,
     this.percent,
     this.computedPercent,
@@ -112,6 +114,7 @@ class SynergyCourse {
   factory SynergyCourse.fromJson(Map<String, dynamic> j) => SynergyCourse(
         synergyName: (j['synergy_name'] as String?) ?? '(unnamed course)',
         teacher: j['teacher'] as String?,
+        teacherEmail: j['teacher_email'] as String?,
         letterGrade: j['letter_grade'] as String?,
         percent: (j['percent'] as num?)?.toDouble(),
         computedPercent: (j['computed_percent'] as num?)?.toDouble(),
@@ -346,13 +349,40 @@ class DataPayload {
 class FetchStatus {
   final String canvas; // "idle" | "running" | "done" | "error"
   final String synergy;
-  const FetchStatus({required this.canvas, required this.synergy});
+  final String? canvasError;
+  final String? synergyError;
+  const FetchStatus({
+    required this.canvas,
+    required this.synergy,
+    this.canvasError,
+    this.synergyError,
+  });
 
   factory FetchStatus.fromJson(Map<String, dynamic> j) => FetchStatus(
         canvas: (j['canvas'] as String?) ?? 'idle',
         synergy: (j['synergy'] as String?) ?? 'idle',
+        canvasError: j['canvas_error'] as String?,
+        synergyError: j['synergy_error'] as String?,
       );
+
+  FetchStatus copyWith({
+    String? canvas,
+    String? synergy,
+    Object? canvasError = _unset,
+    Object? synergyError = _unset,
+  }) {
+    return FetchStatus(
+      canvas: canvas ?? this.canvas,
+      synergy: synergy ?? this.synergy,
+      canvasError:
+          canvasError == _unset ? this.canvasError : canvasError as String?,
+      synergyError:
+          synergyError == _unset ? this.synergyError : synergyError as String?,
+    );
+  }
 }
+
+const _unset = Object();
 
 class Credentials {
   final String? canvasToken;

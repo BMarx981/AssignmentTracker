@@ -73,14 +73,23 @@ class SynergyClient {
       _loginUrl,
       options: Options(responseType: ResponseType.plain),
     );
-    if (r.statusCode == null || r.statusCode! >= 400) {
+    final getStatus = r.statusCode;
+    if (getStatus == null || getStatus >= 400) {
       throw SynergyAuthException(
-          'Could not load login page (HTTP ${r.statusCode}).');
+        'Could not load the Synergy login page.',
+        diagnostics: 'GET $_loginUrl → HTTP $getStatus',
+      );
     }
-    final hidden = _scrapeAspNetHidden(r.data ?? '');
-    if (hidden.isEmpty) {
+    final hidden = _scrapeAllHiddenInputs(r.data ?? '');
+    if (!hidden.containsKey('__VIEWSTATE') ||
+        !hidden.containsKey('__EVENTVALIDATION')) {
       throw SynergyAuthException(
-          'No ASP.NET hidden fields on the login page — Synergy markup may have changed.');
+        "The Synergy login page didn't look the way we expected. "
+        'The site may have changed.',
+        diagnostics: 'GET $_loginUrl → HTTP $getStatus\n'
+            'Hidden inputs found: ${hidden.keys.toList()}',
+        rawHtml: r.data,
+      );
     }
 
     final formFields = <String, String>{
@@ -90,20 +99,74 @@ class SynergyClient {
       r'ctl00$MainContent$Submit1': 'Login',
     };
 
+    // Synergy answers a successful login with a 302 to /PXP2_LaunchPad.aspx
+    // and a failed login with a 200 redisplay of the login form. dio's
+    // built-in follower doesn't always chase 302-on-POST reliably across
+    // platforms, so we handle the redirect ourselves and look at the
+    // Location header to decide success.
     final r2 = await _dio.post<String>(
       _loginUrl,
       data: _formEncode(formFields),
       options: Options(
         responseType: ResponseType.plain,
         contentType: Headers.formUrlEncodedContentType,
+        followRedirects: false,
+        validateStatus: (s) => s != null && s < 400,
       ),
     );
 
-    final finalUrl = (r2.realUri).toString().toLowerCase();
-    if (finalUrl.contains('login') && !finalUrl.contains('gradebook')) {
-      throw SynergyAuthException(
-          'Login failed — still on login page after POST. Check username/password.');
+    final postStatus = r2.statusCode;
+    final location = r2.headers.value('location');
+
+    if ((postStatus == 302 || postStatus == 303) && location != null) {
+      final dest = location.toLowerCase();
+      final wasSentBackToLogin = dest.contains('login');
+      if (!wasSentBackToLogin) {
+        // Success. Follow once to land on the launchpad so the next GET
+        // (the gradebook home) starts from a fully-warmed session.
+        final next = location.startsWith('http') ? location : '$baseUrl$location';
+        await _dio.get<dynamic>(
+          next,
+          options: Options(
+            responseType: ResponseType.plain,
+            followRedirects: true,
+          ),
+        );
+        return;
+      }
     }
+
+    final pageError = _scrapeLoginError(r2.data ?? '');
+    throw SynergyAuthException(
+      pageError ??
+          'Synergy did not accept the username or password. The site '
+              'sent us back to the login page without an error message.',
+      diagnostics: 'GET $_loginUrl → HTTP $getStatus\n'
+          'POST $_loginUrl → HTTP $postStatus\n'
+          'Location header: ${location ?? '(none)'}\n'
+          'Hidden fields submitted: ${hidden.keys.toList()}',
+      rawHtml: r2.data,
+    );
+  }
+
+  /// Looks for the visible error message Synergy renders in its login form
+  /// when credentials are rejected. Returns null if no message can be found.
+  String? _scrapeLoginError(String html) {
+    final doc = html_parser.parse(html);
+    for (final selector in const [
+      '#ErrorMessage',
+      '.ErrorMessage',
+      '.error',
+      '.alert',
+      "[class*='error']",
+      "[class*='alert']",
+    ]) {
+      for (final el in doc.querySelectorAll(selector)) {
+        final text = el.text.trim();
+        if (text.isNotEmpty && text.length < 300) return text;
+      }
+    }
+    return null;
   }
 
   /// Iterates AGU=0..9, scraping the gradebook home for each child. Stops as
@@ -120,7 +183,7 @@ class SynergyClient {
       if (r.statusCode == null || r.statusCode! >= 400) break;
       final homeHtml = r.data ?? '';
 
-      final (studentId, classes) = _scrapeHome(homeHtml);
+      final (studentId, classes, teacherEmails) = _scrapeHome(homeHtml);
       if (studentId == null || seenSids.contains(studentId)) break;
       seenSids.add(studentId);
       final name = _scrapeStudentName(homeHtml);
@@ -128,7 +191,7 @@ class SynergyClient {
       final courses = <Map<String, dynamic>>[];
       for (final cls in classes) {
         final rec = await _fetchClassData(cls);
-        courses.add(_postProcess(rec));
+        courses.add(_postProcess(rec, teacherEmails));
       }
       allStudents.add({
         'student_id': studentId,
@@ -154,23 +217,31 @@ class SynergyClient {
 
   // ---------- login page scraping ----------
 
-  Map<String, String> _scrapeAspNetHidden(String html) {
+  /// Parse the login page properly and pull EVERY hidden input. Modern
+  /// ASP.NET pages sometimes require `__VIEWSTATEGENERATOR`,
+  /// `__EVENTTARGET`, `__EVENTARGUMENT`, `__PREVIOUSPAGE`, etc. in addition
+  /// to `__VIEWSTATE` and `__EVENTVALIDATION`.
+  Map<String, String> _scrapeAllHiddenInputs(String html) {
     final out = <String, String>{};
-    final re = RegExp(
-      r'<input[^>]+name="(__VIEWSTATE[^"]*|__EVENTVALIDATION)"[^>]*value="([^"]*)"',
-      caseSensitive: false,
-    );
-    for (final m in re.allMatches(html)) {
-      out[m.group(1)!] = m.group(2)!;
+    final doc = html_parser.parse(html);
+    for (final el in doc.querySelectorAll('input')) {
+      final type = (el.attributes['type'] ?? '').toLowerCase();
+      if (type != 'hidden') continue;
+      final name = el.attributes['name'];
+      if (name == null || name.isEmpty) continue;
+      out[name] = el.attributes['value'] ?? '';
     }
     return out;
   }
 
   // ---------- gradebook home scraping ----------
 
-  /// Returns `(student_id, classes)` where each class is
-  /// `{focus: Map, classID: int, name: String}`.
-  (String?, List<Map<String, dynamic>>) _scrapeHome(String html) {
+  /// Returns `(student_id, classes, teacherEmails)` where each class is
+  /// `{focus: Map, classID: int, name: String}` and teacherEmails maps the
+  /// teacher's display name (lower-cased, whitespace-collapsed) to their
+  /// email address — scraped from `mailto:` links on the gradebook home page.
+  (String?, List<Map<String, dynamic>>, Map<String, String>) _scrapeHome(
+      String html) {
     String? studentId;
     final sidMatch =
         RegExp(r'"sisNumber"\s*:\s*"(\d{5,9})"').firstMatch(html);
@@ -204,7 +275,24 @@ class SynergyClient {
       classes.add({'focus': obj, 'classID': cid, 'name': name});
     }
 
-    return (studentId, classes);
+    final teacherEmails = <String, String>{};
+    for (final a in doc.querySelectorAll('a[href^="mailto:"]')) {
+      final href = a.attributes['href'] ?? '';
+      final email = href.substring('mailto:'.length).split('?').first.trim();
+      if (email.isEmpty || !email.contains('@')) continue;
+      final label = a.text.trim();
+      if (label.isNotEmpty) {
+        teacherEmails[_normalizeTeacherKey(label)] = email;
+      }
+      // Some ParentVUE deployments put the teacher name in the title attribute
+      // or in a sibling element. Capture title too as a fallback key.
+      final title = a.attributes['title']?.trim();
+      if (title != null && title.isNotEmpty) {
+        teacherEmails[_normalizeTeacherKey(title)] = email;
+      }
+    }
+
+    return (studentId, classes, teacherEmails);
   }
 
   String? _scrapeStudentName(String html) {
@@ -364,9 +452,21 @@ class SynergyClient {
       }
     }
 
+    // Synergy sometimes embeds the teacher's email directly in the gradeCard
+    // or in classData. Keys vary by deployment; try the common ones.
+    final teacherEmail = _pickFirstNonEmptyString([
+      gradeCard?['teacherEmail'],
+      gradeCard?['teacherEmail1'],
+      gradeCard?['teacherEmailAddress'],
+      gradeCard?['staffEmail'],
+      classData?['teacherEmail'],
+      classData?['staffEmail'],
+    ]);
+
     return {
       'synergy_name': _shortClassName(name) ?? name,
       'teacher': teacher,
+      'teacher_email': teacherEmail,
       'letter_grade': letter,
       'percent': percent,
       'missing_count':
@@ -439,7 +539,8 @@ class SynergyClient {
     'historical inquiry': {'policy': 'half_credit_for_missing_work'},
   };
 
-  Map<String, dynamic> _postProcess(Map<String, dynamic> course) {
+  Map<String, dynamic> _postProcess(
+      Map<String, dynamic> course, Map<String, String> teacherEmails) {
     final name = ((course['synergy_name'] as String?) ?? '').toLowerCase();
     for (final entry in _canvasIdByFragment.entries) {
       if (name.contains(entry.key)) {
@@ -456,6 +557,18 @@ class SynergyClient {
     final assignments = (course['assignments'] as List?) ?? const [];
     course['missing_count'] =
         assignments.where((a) => (a as Map)['status'] == 'missing').length;
+
+    // If the per-class XHR didn't surface an email, look the teacher up by
+    // name in the home-page mailto: index.
+    if ((course['teacher_email'] as String?)?.isNotEmpty != true) {
+      final teacher = course['teacher'] as String?;
+      if (teacher != null && teacher.isNotEmpty) {
+        final key = _normalizeTeacherKey(teacher);
+        final email = teacherEmails[key] ??
+            teacherEmails[_normalizeTeacherKey(_swapLastFirst(teacher))];
+        if (email != null) course['teacher_email'] = email;
+      }
+    }
     return course;
   }
 
@@ -472,6 +585,30 @@ class SynergyClient {
 }
 
 // ---------- helpers (top-level, easier to unit-test) ----------
+
+String? _pickFirstNonEmptyString(Iterable<Object?> values) {
+  for (final v in values) {
+    if (v is String && v.trim().isNotEmpty) return v.trim();
+  }
+  return null;
+}
+
+/// Lower-cases, strips honorifics, and collapses whitespace so that
+/// "Ms. Jane Smith" and "Smith, Jane" can both be looked up consistently.
+String _normalizeTeacherKey(String s) {
+  var t = s.toLowerCase().trim();
+  t = t.replaceAll(RegExp(r'^(mr|mrs|ms|miss|mx|dr|prof)\.?\s+'), '');
+  t = t.replaceAll(RegExp(r'\s+'), ' ');
+  return t;
+}
+
+/// Converts "Smith, Jane" → "Jane Smith" so the lookup can match either
+/// directory orientation. Returns the input unchanged when no comma is found.
+String _swapLastFirst(String s) {
+  final m = RegExp(r'^([^,]+),\s*(.+)$').firstMatch(s.trim());
+  if (m == null) return s;
+  return '${m.group(2)} ${m.group(1)}';
+}
 
 String? _shortClassName(String? s) {
   if (s == null || s.isEmpty) return s;
@@ -535,8 +672,17 @@ String? _normalizeDate(Object? v) {
 
 /// Thrown when Synergy login fails (bad credentials, redirected to login, etc).
 class SynergyAuthException implements Exception {
-  SynergyAuthException(this.message);
+  SynergyAuthException(this.message, {this.diagnostics, this.rawHtml});
   final String message;
+
+  /// Structured request/response trace (URLs, status codes, scraped fields)
+  /// suitable for a "technical details" panel.
+  final String? diagnostics;
+
+  /// Full HTML of the response that triggered the failure — kept around so a
+  /// debug/details panel can show it without the user having to re-run.
+  final String? rawHtml;
+
   @override
   String toString() => 'SynergyAuthException: $message';
 }
