@@ -9,7 +9,7 @@ class FetchStatusScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statusAsync = ref.watch(fetchStatusProvider);
+    final s = ref.watch(fetchStatusProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Fetch status'),
@@ -20,37 +20,33 @@ class FetchStatusScreen extends ConsumerWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: statusAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Text('Failed to load status: $e'),
-          data: (s) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _row('Canvas', s.canvas),
-              const SizedBox(height: 8),
-              _row('Synergy', s.synergy),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  FilledButton.icon(
-                    onPressed: () => ref
-                        .read(fetchStatusProvider.notifier)
-                        .triggerCanvas(),
-                    icon: const Icon(Icons.download),
-                    label: const Text('Fetch Canvas'),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: () => ref
-                        .read(fetchStatusProvider.notifier)
-                        .triggerSynergy(),
-                    icon: const Icon(Icons.download),
-                    label: const Text('Fetch Synergy'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _row('Canvas', s.canvas),
+            const SizedBox(height: 8),
+            _row('Synergy', s.synergy),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                FilledButton.icon(
+                  onPressed: () => ref
+                      .read(fetchStatusProvider.notifier)
+                      .triggerCanvas(),
+                  icon: const Icon(Icons.download),
+                  label: const Text('Fetch Canvas'),
+                ),
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: () => ref
+                      .read(fetchStatusProvider.notifier)
+                      .triggerSynergy(),
+                  icon: const Icon(Icons.download),
+                  label: const Text('Fetch Synergy'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

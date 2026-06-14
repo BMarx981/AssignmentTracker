@@ -1,21 +1,28 @@
-// Helpers that mutate per-assignment state on the server, then refresh the
-// data payload. All require the selected student so the server records the
-// status against the right student bucket.
+// Per-assignment mutations: status changes and comment threads.
+//
+// Writes go straight to LocalStore (assignment_status.json / comments.json
+// under students/<id>/), then refresh the dataProvider so the UI re-renders
+// off the new files. No server round-trip.
+
+import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/api_models.dart';
 import '../util/format.dart';
 import 'api_providers.dart';
 import 'data_providers.dart';
 import 'student_providers.dart';
 
 class AssignmentActions {
-  final Ref _ref;
   AssignmentActions(this._ref);
+
+  final Ref _ref;
+  static final _rng = Random.secure();
 
   Future<String?> _studentId() async =>
       _ref.read(selectedStudentProvider).value?.studentId;
+
+  // ---------- status ----------
 
   Future<void> setStatus({
     required String key,
@@ -25,22 +32,40 @@ class AssignmentActions {
     DateTime? plannedDate,
     DateTime? submittedDate,
   }) async {
-    final client = await _ref.read(apiClientProvider.future);
-    await client.setAssignmentStatus(
-      key,
-      AssignmentStatusReq(
-        status: status,
-        assignmentName: assignmentName,
-        courseName: courseName,
-        studentId: await _studentId(),
-        plannedDate: plannedDate != null ? ymd(plannedDate) : null,
-        submittedDate: submittedDate != null ? ymd(submittedDate) : null,
-      ),
-    );
+    const allowed = {
+      'planned',
+      'complete_pending_submission',
+      'submitted_pending_feedback',
+    };
+    if (status != 'clear' && !allowed.contains(status)) {
+      throw ArgumentError('Unknown status: $status');
+    }
+    final sid = await _studentId();
+    if (sid == null) return;
+
+    final store = await _ref.read(localStoreProvider.future);
+    final raw = await store.readAssignmentStatus(sid) ??
+        <String, dynamic>{'entries': <String, dynamic>{}};
+    final entries =
+        (raw['entries'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+
+    if (status == 'clear') {
+      entries.remove(key);
+    } else {
+      entries[key] = <String, dynamic>{
+        'status': status,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+        'assignment_name': assignmentName,
+        'course_name': courseName,
+        if (plannedDate != null) 'planned_date': ymd(plannedDate),
+        if (submittedDate != null) 'submitted_date': ymd(submittedDate),
+      };
+    }
+
+    await store.writeAssignmentStatus(sid, {'entries': entries});
     await _ref.read(dataProvider.notifier).refresh();
   }
 
-  /// "✅ already done" — submitted, no specific date.
   Future<void> markSubmittedNow({
     required String key,
     required String assignmentName,
@@ -53,45 +78,77 @@ class AssignmentActions {
         courseName: courseName,
       );
 
-  Future<void> clear(String key) async {
-    final client = await _ref.read(apiClientProvider.future);
-    await client.setAssignmentStatus(
-      key,
-      AssignmentStatusReq(
+  Future<void> clear(String key) => setStatus(
+        key: key,
         status: 'clear',
         assignmentName: '',
         courseName: '',
-        studentId: await _studentId(),
-      ),
-    );
-    await _ref.read(dataProvider.notifier).refresh();
-  }
+      );
 
-  /// Post a comment text and refresh the data payload (so the threads map
-  /// on the Student object reflects the new entry).
+  // ---------- comments ----------
+
   Future<void> postComment({
     required String key,
     required String text,
-  }) async {
-    final client = await _ref.read(apiClientProvider.future);
-    await client.postComment(
-      key,
-      CommentReq(text: text, studentId: await _studentId()),
-    );
-    await _ref.read(dataProvider.notifier).refresh();
-  }
+  }) =>
+      _addComment(key: key, text: text, replyToId: null);
 
   Future<void> postReply({
     required String key,
     required String parentId,
     required String text,
+  }) =>
+      _addComment(key: key, text: text, replyToId: parentId);
+
+  Future<void> _addComment({
+    required String key,
+    required String text,
+    required String? replyToId,
   }) async {
-    final client = await _ref.read(apiClientProvider.future);
-    await client.postComment(
-      key,
-      CommentReq(
-          text: text, studentId: await _studentId(), replyToId: parentId),
-    );
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    final sid = await _studentId();
+    if (sid == null) return;
+
+    final store = await _ref.read(localStoreProvider.future);
+    final all = await store.readComments(sid) ?? <String, dynamic>{};
+    final threadsRaw = (all[key] as List?) ?? const [];
+    final threads = threadsRaw
+        .map((t) => (t as Map).cast<String, dynamic>())
+        .toList(growable: true);
+
+    final now = DateTime.now().toUtc().toIso8601String();
+    final id = _newId();
+
+    if (replyToId == null) {
+      threads.add(<String, dynamic>{
+        'id': id,
+        'text': trimmed,
+        'author': 'me',
+        'created_at': now,
+        'replies': <Map<String, dynamic>>[],
+      });
+    } else {
+      final parent = threads.firstWhere(
+        (t) => t['id'] == replyToId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (parent.isEmpty) return;
+      final replies = (parent['replies'] as List?)
+              ?.map((r) => (r as Map).cast<String, dynamic>())
+              .toList(growable: true) ??
+          <Map<String, dynamic>>[];
+      replies.add(<String, dynamic>{
+        'id': id,
+        'text': trimmed,
+        'author': 'me',
+        'created_at': now,
+      });
+      parent['replies'] = replies;
+    }
+
+    all[key] = threads;
+    await store.writeComments(sid, all);
     await _ref.read(dataProvider.notifier).refresh();
   }
 
@@ -100,14 +157,44 @@ class AssignmentActions {
     required String commentId,
     String? replyId,
   }) async {
-    final client = await _ref.read(apiClientProvider.future);
-    await client.deleteComment(
-      key,
-      commentId,
-      studentId: await _studentId(),
-      replyId: replyId,
-    );
+    final sid = await _studentId();
+    if (sid == null) return;
+
+    final store = await _ref.read(localStoreProvider.future);
+    final all = await store.readComments(sid) ?? <String, dynamic>{};
+    final threadsRaw = (all[key] as List?) ?? const [];
+    final threads = threadsRaw
+        .map((t) => (t as Map).cast<String, dynamic>())
+        .toList(growable: true);
+
+    if (replyId == null) {
+      threads.removeWhere((t) => t['id'] == commentId);
+    } else {
+      for (final t in threads) {
+        if (t['id'] != commentId) continue;
+        final replies = (t['replies'] as List?)
+                ?.map((r) => (r as Map).cast<String, dynamic>())
+                .toList(growable: true) ??
+            <Map<String, dynamic>>[];
+        replies.removeWhere((r) => r['id'] == replyId);
+        t['replies'] = replies;
+      }
+    }
+
+    if (threads.isEmpty) {
+      all.remove(key);
+    } else {
+      all[key] = threads;
+    }
+    await store.writeComments(sid, all);
     await _ref.read(dataProvider.notifier).refresh();
+  }
+
+  String _newId() {
+    final bytes = List<int>.generate(8, (_) => _rng.nextInt(256));
+    return bytes
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join();
   }
 }
 

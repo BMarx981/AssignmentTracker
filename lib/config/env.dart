@@ -1,16 +1,16 @@
-import 'package:flutter/foundation.dart';
-import 'dart:io' show Platform;
-
+/// Build-time defaults for Canvas / Synergy.
+///
+/// Each can be overridden per-user via the credentials store (see
+/// `CredentialsStore`). The values here are just the fallback when the user
+/// hasn't set their own base URLs.
 class Env {
-  static const String _apiBaseUrlOverride =
-      String.fromEnvironment('API_BASE_URL', defaultValue: '');
-  static const String devUser =
-      String.fromEnvironment('DEV_USER', defaultValue: 'dev');
+  static const String defaultCanvasBaseUrl = String.fromEnvironment(
+    'CANVAS_BASE_URL',
+    defaultValue: 'https://mcpsmd.instructure.com',
+  );
 
-  static String get apiBaseUrl {
-    if (_apiBaseUrlOverride.isNotEmpty) return _apiBaseUrlOverride;
-    if (kIsWeb) return Uri.base.origin;
-    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
-    return 'http://localhost:8000';
-  }
+  static const String defaultSynergyBaseUrl = String.fromEnvironment(
+    'SYNERGY_BASE_URL',
+    defaultValue: 'https://md-mcps-psv.edupoint.com',
+  );
 }

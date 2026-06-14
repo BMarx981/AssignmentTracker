@@ -204,7 +204,7 @@ class _GradeBandsState extends ConsumerState<_GradeBandsSection> {
                         ? null
                         : () async {
                             final client =
-                                await ref.read(apiClientProvider.future);
+                                await ref.read(appRepositoryProvider.future);
                             await client.setGradeBands(GradeBands(
                               failing: _failing ?? bands.failing,
                               atRisk: _atRisk ?? bands.atRisk,
@@ -295,7 +295,7 @@ class _ScoreThresholdsState extends ConsumerState<_ScoreThresholdsSection> {
                   final n = int.tryParse(entry.value.text.trim()) ?? 0;
                   if (n > 0) map[entry.key] = n;
                 }
-                final client = await ref.read(apiClientProvider.future);
+                final client = await ref.read(appRepositoryProvider.future);
                 await client.setScoreThresholds(student.studentId, map);
                 await ref.read(dataProvider.notifier).refresh();
               },
@@ -394,7 +394,7 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
 
   Future<void> _load() async {
     try {
-      final client = await ref.read(apiClientProvider.future);
+      final client = await ref.read(appRepositoryProvider.future);
       final c = await client.getCredentials();
       if (!mounted) return;
       _canvasToken.text = c.canvasToken ?? '';
@@ -439,7 +439,7 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
                       setState(() => _busy = true);
                       try {
                         final client =
-                            await ref.read(apiClientProvider.future);
+                            await ref.read(appRepositoryProvider.future);
                         await client.setCredentials(Credentials(
                           canvasToken: _canvasToken.text.trim().isEmpty
                               ? null

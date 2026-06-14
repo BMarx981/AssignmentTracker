@@ -1,23 +1,19 @@
-// selectedStudentIdProvider is a write-through provider: setting it calls
-// /api/students/{id}/select on the server and then refreshes /api/data.
-// selectedStudentProvider returns the Student from the most recent payload.
+// selectedStudentIdProvider is purely local — the FastAPI server-side session
+// is gone, so selecting a student just changes which Student in the latest
+// DataPayload the UI considers "active".
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/api_models.dart';
-import 'api_providers.dart';
 import 'data_providers.dart';
 
 class SelectedStudentIdNotifier extends Notifier<String?> {
   @override
   String? build() => null;
 
-  Future<void> select(String id) async {
+  void select(String id) {
     if (state == id) return;
     state = id;
-    final client = await ref.read(apiClientProvider.future);
-    await client.selectStudent(id);
-    await ref.read(dataProvider.notifier).refresh();
   }
 }
 

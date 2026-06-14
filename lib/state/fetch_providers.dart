@@ -1,7 +1,6 @@
-// Polls /api/fetch/status every 2s while a Canvas or Synergy job is running,
-// and idles otherwise. Triggers from the UI flip the poll back on.
-
-import 'dart:async';
+// Runs Canvas / Synergy fetches in-app, writes the resulting blob to
+// LocalStore, and refreshes the data provider. Status is purely local
+// ("idle" → "running" → "done" | "error") — there is no server job to poll.
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,57 +8,52 @@ import '../models/api_models.dart';
 import 'api_providers.dart';
 import 'data_providers.dart';
 
-class FetchStatusNotifier extends AsyncNotifier<FetchStatus> {
-  Timer? _timer;
-
+class FetchStatusNotifier extends Notifier<FetchStatus> {
   @override
-  Future<FetchStatus> build() async {
-    final client = await ref.watch(apiClientProvider.future);
-    ref.onDispose(() => _timer?.cancel());
-    return client.fetchStatus();
-  }
+  FetchStatus build() =>
+      const FetchStatus(canvas: 'idle', synergy: 'idle');
 
-  bool _isRunning(FetchStatus s) =>
-      s.canvas == 'running' || s.synergy == 'running';
-
-  Future<void> _poll() async {
+  Future<void> triggerCanvas() async {
+    if (state.canvas == 'running') return;
+    state = FetchStatus(canvas: 'running', synergy: state.synergy);
     try {
-      final client = await ref.read(apiClientProvider.future);
-      final next = await client.fetchStatus();
-      final cur = state.value;
-      state = AsyncData(next);
-      if (cur != null && _isRunning(cur) && !_isRunning(next)) {
-        // A job just finished — pull fresh data.
-        await ref.read(dataProvider.notifier).refresh();
+      final client = await ref.read(canvasClientProvider.future);
+      if (client == null) {
+        throw StateError(
+            'Canvas token not set. Add it in Settings → Credentials.');
       }
-      if (!_isRunning(next)) {
-        _timer?.cancel();
-        _timer = null;
-      }
+      final payload = await client.fetchAll();
+      final store = await ref.read(localStoreProvider.future);
+      await store.writeCanvasData(payload);
+      state = FetchStatus(canvas: 'done', synergy: state.synergy);
+      await ref.read(dataProvider.notifier).refresh();
     } catch (_) {
-      // Swallow transient errors; the user can hit refresh.
+      state = FetchStatus(canvas: 'error', synergy: state.synergy);
+      rethrow;
     }
   }
 
-  void _ensurePolling() {
-    _timer ??= Timer.periodic(const Duration(seconds: 2), (_) => _poll());
-  }
-
-  Future<void> triggerCanvas() async {
-    final client = await ref.read(apiClientProvider.future);
-    await client.triggerCanvasFetch();
-    _ensurePolling();
-    await _poll();
-  }
-
   Future<void> triggerSynergy() async {
-    final client = await ref.read(apiClientProvider.future);
-    await client.triggerSynergyFetch();
-    _ensurePolling();
-    await _poll();
+    if (state.synergy == 'running') return;
+    state = FetchStatus(canvas: state.canvas, synergy: 'running');
+    try {
+      final client = await ref.read(synergyClientProvider.future);
+      if (client == null) {
+        throw StateError(
+            'Synergy username/password not set. Add them in Settings → Credentials.');
+      }
+      final payload = await client.fetchAll();
+      final store = await ref.read(localStoreProvider.future);
+      await store.writeSynergyData(payload);
+      state = FetchStatus(canvas: state.canvas, synergy: 'done');
+      await ref.read(dataProvider.notifier).refresh();
+    } catch (_) {
+      state = FetchStatus(canvas: state.canvas, synergy: 'error');
+      rethrow;
+    }
   }
 }
 
 final fetchStatusProvider =
-    AsyncNotifierProvider<FetchStatusNotifier, FetchStatus>(
+    NotifierProvider<FetchStatusNotifier, FetchStatus>(
         FetchStatusNotifier.new);
