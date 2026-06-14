@@ -5,7 +5,9 @@ import 'package:assignment_tracker_app/main.dart';
 
 void main() {
   testWidgets('App scaffolds without throwing', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: TrackerApp()));
+    await tester.pumpWidget(
+      const ProviderScope(child: TrackerApp(initialLocation: '/')),
+    );
     expect(find.text('Assignment Tracker'), findsOneWidget);
   });
 }

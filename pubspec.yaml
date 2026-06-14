@@ -21,7 +21,6 @@ dependencies:
   cookie_jar: ^4.0.9
   dio_cookie_manager: ^3.4.0
   path_provider: ^2.1.5
-  flutter_secure_storage: ^10.3.1
   shared_preferences: ^2.5.5
   intl: ^0.20.2
   pdf: ^3.12.0

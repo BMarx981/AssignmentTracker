@@ -78,6 +78,16 @@ class LocalStore {
   Future<void> writeGradeBands(Map<String, dynamic> bands) =>
       _writeJson('grade_bands.json', bands);
 
+  // ---------- credentials ----------
+
+  Future<Map<String, dynamic>?> readCredentials() async {
+    final raw = await _readJson('credentials.json');
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
+  Future<void> writeCredentials(Map<String, dynamic> data) =>
+      _writeJson('credentials.json', data);
+
   // ---------- raw fetch snapshots (multi-student blobs) ----------
 
   Future<Map<String, dynamic>?> readCanvasData() async {

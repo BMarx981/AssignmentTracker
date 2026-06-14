@@ -57,12 +57,16 @@ class DashboardScreen extends ConsumerWidget {
 class _DashboardBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final payload = ref.watch(dataProvider).value;
     final student = ref.watch(selectedStudentProvider).value;
-    final bands = ref.watch(dataProvider).value?.gradeBands;
+    final bands = payload?.gradeBands;
     final courses = ref.watch(mergedCoursesProvider);
     final top = ref.watch(top20Provider);
     final range = ref.watch(dateRangeProvider).value;
 
+    if (payload != null && payload.students.isEmpty) {
+      return _EmptyState(onSettings: () => context.go('/settings'));
+    }
     if (student == null || bands == null || range == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -153,6 +157,45 @@ class _DashboardBody extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onSettings});
+
+  final VoidCallback onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.school_outlined, size: 64, color: Color(0xFF8A8A8A)),
+            const SizedBox(height: 16),
+            const Text(
+              'No data yet',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Add your Canvas token and Synergy credentials in Settings, '
+              'then run a fetch to pull in your assignments.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF666666)),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              icon: const Icon(Icons.settings_outlined),
+              label: const Text('Open Settings'),
+              onPressed: onSettings,
+            ),
+          ],
+        ),
       ),
     );
   }

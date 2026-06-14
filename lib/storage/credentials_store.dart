@@ -1,58 +1,42 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import '../models/api_models.dart';
+import 'local_store.dart';
 
-/// Persists API credentials in the OS keychain via `flutter_secure_storage`.
+/// Persists API credentials to a JSON file inside the app's sandboxed
+/// Application Support directory.
 ///
-/// Replaces the server-side `credentials.json` / Secret Manager backing —
-/// we're a single-user native app, so the device keychain is plenty.
+/// We use plain JSON instead of the Keychain because:
+///   * Keychain on sandboxed macOS apps requires `keychain-access-groups`
+///     entitlement, which in turn requires a real signing identity. That's
+///     a hassle for a personal app.
+///   * The sandbox container is only accessible by this app + Time Machine,
+///     which is sufficient for a parent-facing assignment tracker.
 class CredentialsStore {
-  CredentialsStore({FlutterSecureStorage? storage})
-      : _s = storage ?? const FlutterSecureStorage();
-
-  final FlutterSecureStorage _s;
-
-  static const _kCanvasToken = 'tracker.canvas_token';
-  static const _kCanvasBaseUrl = 'tracker.canvas_base_url';
-  static const _kSynergyUsername = 'tracker.synergy_username';
-  static const _kSynergyPassword = 'tracker.synergy_password';
-  static const _kSynergyBaseUrl = 'tracker.synergy_base_url';
+  CredentialsStore();
 
   Future<Credentials> read() async {
-    return Credentials(
-      canvasToken: await _s.read(key: _kCanvasToken),
-      canvasBaseUrl: await _s.read(key: _kCanvasBaseUrl),
-      synergyUsername: await _s.read(key: _kSynergyUsername),
-      synergyPassword: await _s.read(key: _kSynergyPassword),
-      synergyBaseUrl: await _s.read(key: _kSynergyBaseUrl),
-    );
+    final store = await LocalStore.instance();
+    final raw = await store.readCredentials();
+    if (raw == null) return const Credentials();
+    return Credentials.fromJson(raw);
   }
 
   Future<void> write(Credentials c) async {
-    await _writeOrDelete(_kCanvasToken, c.canvasToken);
-    await _writeOrDelete(_kCanvasBaseUrl, c.canvasBaseUrl);
-    await _writeOrDelete(_kSynergyUsername, c.synergyUsername);
-    await _writeOrDelete(_kSynergyPassword, c.synergyPassword);
-    await _writeOrDelete(_kSynergyBaseUrl, c.synergyBaseUrl);
+    final store = await LocalStore.instance();
+    await store.writeCredentials(<String, dynamic>{
+      if ((c.canvasToken ?? '').isNotEmpty) 'canvas_token': c.canvasToken,
+      if ((c.canvasBaseUrl ?? '').isNotEmpty)
+        'canvas_base_url': c.canvasBaseUrl,
+      if ((c.synergyUsername ?? '').isNotEmpty)
+        'synergy_username': c.synergyUsername,
+      if ((c.synergyPassword ?? '').isNotEmpty)
+        'synergy_password': c.synergyPassword,
+      if ((c.synergyBaseUrl ?? '').isNotEmpty)
+        'synergy_base_url': c.synergyBaseUrl,
+    });
   }
 
   Future<void> clear() async {
-    for (final k in const [
-      _kCanvasToken,
-      _kCanvasBaseUrl,
-      _kSynergyUsername,
-      _kSynergyPassword,
-      _kSynergyBaseUrl,
-    ]) {
-      await _s.delete(key: k);
-    }
-  }
-
-  Future<void> _writeOrDelete(String key, String? value) async {
-    if (value == null || value.isEmpty) {
-      await _s.delete(key: key);
-    } else {
-      await _s.write(key: key, value: value);
-    }
+    final store = await LocalStore.instance();
+    await store.writeCredentials(const <String, dynamic>{});
   }
 }

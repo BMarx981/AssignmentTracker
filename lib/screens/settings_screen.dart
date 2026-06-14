@@ -457,10 +457,30 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
                               ? null
                               : _synUrl.text.trim(),
                         ));
+                        // Round-trip read to verify the write actually landed
+                        // — silent keychain failures are a real failure mode
+                        // on macOS without the right entitlements.
+                        final readBack = await client.getCredentials();
+                        final ok = (readBack.canvasToken ?? '') ==
+                                _canvasToken.text.trim() &&
+                            (readBack.synergyUsername ?? '') ==
+                                _synUser.text.trim();
                         if (!mounted) return;
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Saved.')));
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(ok
+                              ? 'Saved.'
+                              : 'Save did not stick — keychain write failed.'),
+                          backgroundColor:
+                              ok ? null : const Color(0xFF8A1A1A),
+                        ));
+                      } catch (e) {
+                        if (!mounted) return;
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Save failed: $e'),
+                          backgroundColor: const Color(0xFF8A1A1A),
+                        ));
                       } finally {
                         if (mounted) setState(() => _busy = false);
                       }
@@ -503,17 +523,25 @@ class _FetchSection extends ConsumerWidget {
         runSpacing: 8,
         children: [
           FilledButton.icon(
-            onPressed: () async {
-              await ref.read(fetchStatusProvider.notifier).triggerCanvas();
-              if (context.mounted) context.go('/fetch');
+            onPressed: () {
+              context.go('/fetch');
+              // Fire-and-forget: the fetch screen reflects state.canvas live.
+              // Swallow errors here; the screen surfaces 'error' state.
+              ref
+                  .read(fetchStatusProvider.notifier)
+                  .triggerCanvas()
+                  .catchError((_) {});
             },
             icon: const Icon(Icons.cloud_download_outlined),
             label: const Text('Fetch Canvas'),
           ),
           FilledButton.icon(
-            onPressed: () async {
-              await ref.read(fetchStatusProvider.notifier).triggerSynergy();
-              if (context.mounted) context.go('/fetch');
+            onPressed: () {
+              context.go('/fetch');
+              ref
+                  .read(fetchStatusProvider.notifier)
+                  .triggerSynergy()
+                  .catchError((_) {});
             },
             icon: const Icon(Icons.cloud_download_outlined),
             label: const Text('Fetch Synergy'),
