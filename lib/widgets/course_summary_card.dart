@@ -19,7 +19,7 @@ Color gradeBandColor(String band) {
   }
 }
 
-class CourseSummaryCard extends StatelessWidget {
+class CourseSummaryCard extends StatefulWidget {
   final MergedCourse course;
   final GradeBands bands;
   final Map<String, LocalStatus> statusByKey;
@@ -36,30 +36,38 @@ class CourseSummaryCard extends StatelessWidget {
   });
 
   @override
+  State<CourseSummaryCard> createState() => _CourseSummaryCardState();
+}
+
+class _CourseSummaryCardState extends State<CourseSummaryCard> {
+  bool _gradesHidden = true;
+
+  @override
   Widget build(BuildContext context) {
+    final course = widget.course;
     final p = course.synergyPercent ?? course.canvasAvgWithMissing;
-    final band = courseClass(p, bands);
+    final band = courseClass(p, widget.bands);
     final accent = gradeBandColor(band);
 
     final pills = <Widget>[];
     final synMiss = course.items
         .where((it) => it.source != 'canvas')
-        .where((it) => range.contains(it.date) && it.status == 'missing')
+        .where((it) => widget.range.contains(it.date) && it.status == 'missing')
         .length;
     if (course.synergyPercent != null || course.items.any((i) => i.source == 'synergy' || i.source == 'both')) {
       pills.add(_pill('$synMiss Syn-missing', warn: synMiss > 0, bad: synMiss > 0));
     }
     final cMiss = course.items
         .where((it) => it.source != 'synergy')
-        .where((it) => range.contains(it.date) && it.canvasStatus == 'missing')
+        .where((it) => widget.range.contains(it.date) && it.canvasStatus == 'missing')
         .length;
     final cZero = course.items
-        .where((it) => range.contains(it.date) && it.status == 'zero_graded')
+        .where((it) => widget.range.contains(it.date) && it.status == 'zero_graded')
         .length;
     if (cMiss > 0) pills.add(_pill('$cMiss Canvas-missing', warn: true));
     if (cZero > 0) pills.add(_pill('$cZero zero-graded', warn: true));
 
-    final localEntries = statusByKey.values.where((e) => e.courseName == course.name);
+    final localEntries = widget.statusByKey.values.where((e) => e.courseName == course.name);
     final nComplete =
         localEntries.where((e) => e.status == 'complete_pending_submission').length;
     final nSubmitted =
@@ -74,7 +82,7 @@ class CourseSummaryCard extends StatelessWidget {
     }
 
     return InkWell(
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -87,11 +95,29 @@ class CourseSummaryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              course.name,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.25),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    course.name,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.25),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _gradesHidden = !_gradesHidden),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(
+                      _gradesHidden ? Icons.visibility_off : Icons.visibility,
+                      size: 16,
+                      color: const Color(0xFFAAAAAA),
+                    ),
+                  ),
+                ),
+              ],
             ),
             if (course.teacher != null && course.teacher!.isNotEmpty)
               Padding(
@@ -107,12 +133,14 @@ class CourseSummaryCard extends StatelessWidget {
               accent: accent,
               big: true,
             ),
-            if (course.policyHalfCredit && course.synergyAltHalfCreditPercent != null)
-              _row('If missing = 50%', pctText(course.synergyAltHalfCreditPercent),
-                  bold: true),
-            if (course.canvasAvgWithMissing != null)
-              _row('Canvas worst-case', pctText(course.canvasAvgWithMissing),
-                  bold: true),
+            if (!_gradesHidden) ...[
+              if (course.policyHalfCredit && course.synergyAltHalfCreditPercent != null)
+                _row('If missing = 50%', pctText(course.synergyAltHalfCreditPercent),
+                    bold: true),
+              if (course.canvasAvgWithMissing != null)
+                _row('Canvas worst-case', pctText(course.canvasAvgWithMissing),
+                    bold: true),
+            ],
             if (pills.isNotEmpty) ...[
               const SizedBox(height: 6),
               Wrap(spacing: 4, runSpacing: 4, children: pills),
@@ -139,21 +167,32 @@ class CourseSummaryCard extends StatelessWidget {
           Expanded(
             child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF555555))),
           ),
-          if (letter != null && letter.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: Text(letter,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          if (!_gradesHidden) ...[
+            if (letter != null && letter.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Text(letter,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+              ),
+            Text(
+              pctText(percent),
+              style: TextStyle(
+                fontSize: big ? 24 : 14,
+                fontWeight: FontWeight.w700,
+                color: accent,
+                height: 1,
+              ),
             ),
-          Text(
-            pctText(percent),
-            style: TextStyle(
-              fontSize: big ? 24 : 14,
-              fontWeight: FontWeight.w700,
-              color: accent,
-              height: 1,
+          ] else
+            Text(
+              '•••',
+              style: TextStyle(
+                fontSize: big ? 24 : 14,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFCCCCCC),
+                height: 1,
+              ),
             ),
-          ),
         ],
       ),
     );
