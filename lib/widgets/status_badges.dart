@@ -165,3 +165,86 @@ List<Widget> statusBadgesFor(
   }
   return out;
 }
+
+/// One-badge picker for the home/catch-up list. Order of preference:
+/// 1. Local claim (planned / complete-pending / submitted-pending)
+/// 2. Due phrase for missing items (due today / due tomorrow / was due X / due in N days)
+/// 3. zero-graded or 50% credit for the recovery cases
+///
+/// Returns null if none apply.
+StatusBadge? primaryBadgeFor(
+  MergedItem item,
+  Map<String, LocalStatus> statusByKey, {
+  DateTime? today,
+}) {
+  final ls = getLocalStatus(item, statusByKey);
+  if (ls != null) {
+    if (ls.status == 'planned') {
+      final d = fmtPlanDate(ls.plannedDate);
+      return StatusBadge(
+        label: '📅 plan: ${d.isEmpty ? 'date' : d}',
+        background: _bgCpend,
+        foreground: _fgCpend,
+      );
+    }
+    final isSpend = ls.status == 'submitted_pending_feedback';
+    return StatusBadge(
+      label: isSpend ? 'submitted · awaiting' : 'done · pending submit',
+      background: isSpend ? _bgSpend : _bgCpend,
+      foreground: isSpend ? _fgSpend : _fgCpend,
+    );
+  }
+
+  final now = today ?? DateTime.now();
+  final todayMidnight = DateTime(now.year, now.month, now.day);
+
+  if (item.status == 'missing') {
+    DateTime? due;
+    if (item.date != null && item.date!.isNotEmpty) {
+      due = DateTime.tryParse(
+          item.date!.length == 10 ? '${item.date}T00:00:00' : item.date!);
+    }
+    if (due == null) {
+      return const StatusBadge(
+          label: 'missing', background: _bgMissing, foreground: _fgMissing);
+    }
+    final dueMidnight = DateTime(due.year, due.month, due.day);
+    final days = dueMidnight.difference(todayMidnight).inDays;
+    if (days < 0) {
+      // Overdue. Show "was due Mon 6/9" if within a week, else "missing".
+      if (days >= -7) {
+        return StatusBadge(
+          label: 'was due ${fmtPlanDate(item.date)}',
+          background: _bgMissing,
+          foreground: _fgMissing,
+        );
+      }
+      return const StatusBadge(
+          label: 'missing', background: _bgMissing, foreground: _fgMissing);
+    }
+    if (days == 0) {
+      return const StatusBadge(
+          label: 'due today', background: _bgDueSoon, foreground: _fgDueSoon);
+    }
+    if (days == 1) {
+      return const StatusBadge(
+          label: 'due tomorrow',
+          background: _bgDueSoon,
+          foreground: _fgDueSoon);
+    }
+    return StatusBadge(
+      label: 'due in $days days',
+      background: _bgUpcoming,
+      foreground: _fgUpcoming,
+    );
+  }
+  if (item.status == 'half_credit_missing') {
+    return const StatusBadge(
+        label: '50% credit', background: _bgHalf, foreground: _fgHalf);
+  }
+  if (item.status == 'zero_graded') {
+    return const StatusBadge(
+        label: 'zero-graded', background: _bgZero, foreground: _fgZero);
+  }
+  return null;
+}

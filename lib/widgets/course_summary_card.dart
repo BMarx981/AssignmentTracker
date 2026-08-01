@@ -45,40 +45,65 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
   @override
   Widget build(BuildContext context) {
     final course = widget.course;
-    final p = course.synergyPercent ?? course.canvasAvgWithMissing;
+
+    // One grade number, picked in priority order.
+    final double? p;
+    final String gradeSource;
+    if (course.policyHalfCredit &&
+        course.synergyAltHalfCreditPercent != null) {
+      p = course.synergyAltHalfCreditPercent;
+      gradeSource = 'Synergy · history rule';
+    } else if (course.synergyPercent != null) {
+      p = course.synergyPercent;
+      gradeSource =
+          course.synergyPercentIsComputed ? 'Synergy (est.)' : 'Synergy';
+    } else if (course.canvasAvgWithMissing != null) {
+      p = course.canvasAvgWithMissing;
+      gradeSource = 'Canvas worst-case';
+    } else {
+      p = null;
+      gradeSource = 'No grade yet';
+    }
     final band = courseClass(p, widget.bands);
     final accent = gradeBandColor(band);
 
-    final pills = <Widget>[];
+    // Two-pill summary: things-to-catch-up vs. already-pending.
     final synMiss = course.items
         .where((it) => it.source != 'canvas')
-        .where((it) => widget.range.contains(it.date) && it.status == 'missing')
+        .where((it) =>
+            widget.range.contains(it.date) && it.status == 'missing')
         .length;
-    if (course.synergyPercent != null || course.items.any((i) => i.source == 'synergy' || i.source == 'both')) {
-      pills.add(_pill('$synMiss Syn-missing', warn: synMiss > 0, bad: synMiss > 0));
-    }
     final cMiss = course.items
         .where((it) => it.source != 'synergy')
-        .where((it) => widget.range.contains(it.date) && it.canvasStatus == 'missing')
+        .where((it) =>
+            widget.range.contains(it.date) && it.canvasStatus == 'missing')
         .length;
     final cZero = course.items
-        .where((it) => widget.range.contains(it.date) && it.status == 'zero_graded')
+        .where((it) =>
+            widget.range.contains(it.date) && it.status == 'zero_graded')
         .length;
-    if (cMiss > 0) pills.add(_pill('$cMiss Canvas-missing', warn: true));
-    if (cZero > 0) pills.add(_pill('$cZero zero-graded', warn: true));
+    final toCatchUp = synMiss + cMiss + cZero;
 
-    final localEntries = widget.statusByKey.values.where((e) => e.courseName == course.name);
-    final nComplete =
-        localEntries.where((e) => e.status == 'complete_pending_submission').length;
-    final nSubmitted =
-        localEntries.where((e) => e.status == 'submitted_pending_feedback').length;
-    if (nComplete > 0) {
-      pills.add(_pill('$nComplete complete · pending submit',
-          background: const Color(0xFFD1FAE5), foreground: const Color(0xFF065F46)));
+    final localEntries = widget.statusByKey.values
+        .where((e) => e.courseName == course.name);
+    final nComplete = localEntries
+        .where((e) => e.status == 'complete_pending_submission')
+        .length;
+    final nSubmitted = localEntries
+        .where((e) => e.status == 'submitted_pending_feedback')
+        .length;
+    final nPending = nComplete + nSubmitted;
+
+    final pills = <Widget>[];
+    if (toCatchUp > 0) {
+      pills.add(_pill('$toCatchUp to catch up', warn: true));
     }
-    if (nSubmitted > 0) {
-      pills.add(_pill('$nSubmitted submitted · awaiting grade',
-          background: const Color(0xFFDBEAFE), foreground: const Color(0xFF1E40AF)));
+    if (nPending > 0) {
+      pills.add(_pill(
+        '$nPending pending',
+        background: const Color(0xFFD1FAE5),
+        foreground: const Color(0xFF065F46),
+      ));
     }
 
     return InkWell(
@@ -101,13 +126,17 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
                 Expanded(
                   child: Text(
                     course.name,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.25),
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 GestureDetector(
-                  onTap: () => setState(() => _gradesHidden = !_gradesHidden),
+                  onTap: () =>
+                      setState(() => _gradesHidden = !_gradesHidden),
                   child: Padding(
                     padding: const EdgeInsets.only(left: 4),
                     child: Icon(
@@ -119,28 +148,13 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
                 ),
               ],
             ),
-            if (course.teacher != null && course.teacher!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(course.teacher!,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF888888))),
-              ),
             const SizedBox(height: 8),
             _gradeRow(
-              label: 'Synergy${course.synergyPercentIsComputed ? ' (est.)' : ''}',
-              percent: course.synergyPercent,
+              source: gradeSource,
+              percent: p,
               letter: course.synergyLetter,
               accent: accent,
-              big: true,
             ),
-            if (!_gradesHidden) ...[
-              if (course.policyHalfCredit && course.synergyAltHalfCreditPercent != null)
-                _row('If missing = 50%', pctText(course.synergyAltHalfCreditPercent),
-                    bold: true),
-              if (course.canvasAvgWithMissing != null)
-                _row('Canvas worst-case', pctText(course.canvasAvgWithMissing),
-                    bold: true),
-            ],
             if (pills.isNotEmpty) ...[
               const SizedBox(height: 6),
               Wrap(spacing: 4, runSpacing: 4, children: pills),
@@ -152,11 +166,10 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
   }
 
   Widget _gradeRow({
-    required String label,
+    required String source,
     required double? percent,
     required String? letter,
     required Color accent,
-    bool big = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -165,31 +178,34 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
         textBaseline: TextBaseline.alphabetic,
         children: [
           Expanded(
-            child: Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF555555))),
+            child: Text(source,
+                style: const TextStyle(
+                    fontSize: 11, color: Color(0xFF888888))),
           ),
           if (!_gradesHidden) ...[
             if (letter != null && letter.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: Text(letter,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700)),
               ),
             Text(
               pctText(percent),
               style: TextStyle(
-                fontSize: big ? 24 : 14,
+                fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: accent,
                 height: 1,
               ),
             ),
           ] else
-            Text(
+            const Text(
               '•••',
               style: TextStyle(
-                fontSize: big ? 24 : 14,
+                fontSize: 24,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFFCCCCCC),
+                color: Color(0xFFCCCCCC),
                 height: 1,
               ),
             ),
@@ -198,32 +214,13 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
     );
   }
 
-  Widget _row(String label, String value, {bool bold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-              child: Text(label,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF555555)))),
-          Text(value,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-
-  Widget _pill(String text, {bool warn = false, bool bad = false, Color? background, Color? foreground}) {
+  Widget _pill(String text,
+      {bool warn = false, Color? background, Color? foreground}) {
     Color bg;
     Color fg;
     if (background != null && foreground != null) {
       bg = background;
       fg = foreground;
-    } else if (bad) {
-      bg = const Color(0xFFFDE2E2);
-      fg = const Color(0xFF8A1A1A);
     } else if (warn) {
       bg = const Color(0xFFFFE9C2);
       fg = const Color(0xFF7C4A00);
