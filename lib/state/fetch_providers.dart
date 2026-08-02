@@ -7,7 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/fetch_error.dart';
+import 'package:assignment_tracker_app/domain/fetch_error.dart';
 import 'api_providers.dart';
 import 'data_providers.dart';
 

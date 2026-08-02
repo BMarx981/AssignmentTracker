@@ -1,4 +1,4 @@
-import '../models/api_models.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
 import 'local_store.dart';
 
 /// Persists API credentials to a JSON file inside the app's sandboxed

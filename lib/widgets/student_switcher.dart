@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../state/data_providers.dart';
-import '../state/student_providers.dart';
+import 'package:assignment_tracker_app/state/data_providers.dart';
+import 'package:assignment_tracker_app/state/student_providers.dart';
 
 /// Dropdown menu in the AppBar for switching students. Renders nothing when
 /// there's only one student.

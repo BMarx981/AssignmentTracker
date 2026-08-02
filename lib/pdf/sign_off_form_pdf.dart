@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../domain/merged.dart';
-import '../domain/priority.dart';
-import '../models/api_models.dart';
-import '../util/format.dart';
+import 'package:assignment_tracker_app/domain/merged.dart';
+import 'package:assignment_tracker_app/domain/priority.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/util/format.dart';
 
 /// Builds the teacher sign-off PDF for one student. Pure function over the
 /// same domain models the UI consumes. The result is one document; printing

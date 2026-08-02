@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../domain/fetch_error.dart';
-import '../state/fetch_providers.dart';
-import '../theme/app_theme.dart';
+import 'package:assignment_tracker_app/domain/fetch_error.dart';
+import 'package:assignment_tracker_app/state/fetch_providers.dart';
+import 'package:assignment_tracker_app/theme/app_theme.dart';
 
 class FetchStatusScreen extends ConsumerWidget {
   const FetchStatusScreen({super.key});

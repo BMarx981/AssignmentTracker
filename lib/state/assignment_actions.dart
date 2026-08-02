@@ -8,7 +8,7 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../util/format.dart';
+import 'package:assignment_tracker_app/util/format.dart';
 import 'api_providers.dart';
 import 'data_providers.dart';
 import 'student_providers.dart';

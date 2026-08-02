@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../api/synergy_client.dart';
+import 'package:assignment_tracker_app/api/synergy_client.dart';
 
 /// User-facing representation of a fetch failure.
 ///

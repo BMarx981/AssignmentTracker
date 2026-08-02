@@ -185,7 +185,14 @@ class CanvasData {
 
   factory CanvasData.fromJson(Map<String, dynamic> j) => CanvasData(
         generatedAt: j['generated_at'] as String?,
-        currentGradingPeriod: j['current_grading_period'] as String?,
+        // Canvas fetches store this as `{title, start_date, end_date}`; older
+        // payloads stored just the title. Accept both — an `as String?` cast
+        // on the map form throws and takes the whole assemble() down.
+        currentGradingPeriod: switch (j['current_grading_period']) {
+          final Map m => m['title'] as String?,
+          final String s => s,
+          _ => null,
+        },
         courses: _asList(j['courses'],
             (e) => CanvasCourse.fromJson(e as Map<String, dynamic>)),
       );

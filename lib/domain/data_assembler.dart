@@ -1,5 +1,5 @@
-import '../models/api_models.dart';
-import '../storage/local_store.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/storage/local_store.dart';
 
 /// Builds the `DataPayload` the UI consumes by joining locally-stored Canvas
 /// + Synergy fetches with per-student state (statuses, comments, thresholds)

@@ -1,16 +1,19 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../models/api_models.dart';
-import '../state/api_providers.dart';
-import '../state/data_providers.dart';
-import '../state/fetch_providers.dart';
-import '../state/prefs_providers.dart';
-import '../state/priority_providers.dart';
-import '../state/student_providers.dart';
-import '../theme/app_theme.dart';
-import '../util/format.dart';
+import 'package:assignment_tracker_app/dev/demo_data.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/state/api_providers.dart';
+import 'package:assignment_tracker_app/state/data_providers.dart';
+import 'package:assignment_tracker_app/state/fetch_providers.dart';
+import 'package:assignment_tracker_app/state/prefs_providers.dart';
+import 'package:assignment_tracker_app/state/priority_providers.dart';
+import 'package:assignment_tracker_app/state/student_providers.dart';
+import 'package:assignment_tracker_app/storage/local_store.dart';
+import 'package:assignment_tracker_app/theme/app_theme.dart';
+import 'package:assignment_tracker_app/util/format.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -46,6 +49,10 @@ class SettingsScreen extends ConsumerWidget {
                 _CredentialsSection(),
                 SizedBox(height: 20),
                 _FetchSection(),
+                if (kDebugMode) ...[
+                  SizedBox(height: 20),
+                  _DemoDataSection(),
+                ],
               ],
             ),
           ),
@@ -597,6 +604,84 @@ class _FetchSection extends ConsumerWidget {
             onPressed: () => context.go('/fetch'),
             icon: const Icon(Icons.info_outline),
             label: const Text('View status'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------- Demo data (debug builds only) ----------
+
+/// Seeds synthetic Canvas + Synergy data so the app can be exercised without
+/// live credentials — over the summer a real fetch returns nothing in range.
+/// Gated on [kDebugMode] at the call site so it never ships in a release build.
+class _DemoDataSection extends ConsumerStatefulWidget {
+  const _DemoDataSection();
+  @override
+  ConsumerState<_DemoDataSection> createState() => _DemoDataState();
+}
+
+class _DemoDataState extends ConsumerState<_DemoDataSection> {
+  bool _busy = false;
+
+  Future<void> _run(
+      Future<void> Function(LocalStore store) action, String done) async {
+    setState(() => _busy = true);
+    try {
+      final store = await ref.read(localStoreProvider.future);
+      await action(store);
+      // The old selection may point at a student that no longer exists.
+      ref.invalidate(selectedStudentIdProvider);
+      await ref.read(dataProvider.notifier).refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(done)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Failed: $e'),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Section(
+      title: 'Demo data (debug only)',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Replaces stored Canvas/Synergy data with two synthetic students. '
+            'Due dates are generated relative to today, so seeded work always '
+            'lands inside the current date range. Credentials are left alone.',
+            style: TextStyle(
+                fontSize: 12, color: AppColors.of(context).textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _run((s) => seedDemoData(s), 'Demo data loaded.'),
+                icon: const Icon(Icons.science_outlined),
+                label: const Text('Load demo data'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _run((s) => clearDemoData(s), 'Local data cleared.'),
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Clear local data'),
+              ),
+            ],
           ),
         ],
       ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../domain/priority.dart';
-import '../models/api_models.dart';
-import '../state/priority_providers.dart';
-import '../theme/app_theme.dart';
-import '../util/format.dart';
+import 'package:assignment_tracker_app/domain/priority.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/state/priority_providers.dart';
+import 'package:assignment_tracker_app/theme/app_theme.dart';
+import 'package:assignment_tracker_app/util/format.dart';
 import 'status_badges.dart';
 
 class PriorityListItem extends StatelessWidget {

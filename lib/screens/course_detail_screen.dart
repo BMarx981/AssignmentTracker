@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../domain/merged.dart';
-import '../domain/priority.dart';
-import '../state/data_providers.dart';
-import '../state/prefs_providers.dart';
-import '../state/priority_providers.dart';
-import '../state/student_providers.dart';
-import '../theme/app_theme.dart';
-import '../util/format.dart';
-import '../widgets/assignment_card.dart';
-import '../widgets/comments_panel.dart';
-import '../widgets/course_summary_card.dart';
+import 'package:assignment_tracker_app/domain/merged.dart';
+import 'package:assignment_tracker_app/domain/priority.dart';
+import 'package:assignment_tracker_app/state/data_providers.dart';
+import 'package:assignment_tracker_app/state/prefs_providers.dart';
+import 'package:assignment_tracker_app/state/priority_providers.dart';
+import 'package:assignment_tracker_app/state/student_providers.dart';
+import 'package:assignment_tracker_app/theme/app_theme.dart';
+import 'package:assignment_tracker_app/util/format.dart';
+import 'package:assignment_tracker_app/widgets/assignment_card.dart';
+import 'package:assignment_tracker_app/widgets/comments_panel.dart';
+import 'package:assignment_tracker_app/widgets/course_summary_card.dart';
 
 class CourseDetailScreen extends ConsumerWidget {
   final String courseName;

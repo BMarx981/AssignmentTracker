@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../domain/merged.dart';
-import '../models/api_models.dart';
-import '../theme/app_theme.dart';
+import 'package:assignment_tracker_app/domain/merged.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/theme/app_theme.dart';
 import 'assignment_actions_sheet.dart';
 import 'status_badges.dart';
 

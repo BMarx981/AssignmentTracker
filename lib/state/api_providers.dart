@@ -6,13 +6,13 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../api/canvas_client.dart';
-import '../api/synergy_client.dart';
-import '../config/env.dart';
-import '../domain/data_assembler.dart';
-import '../models/api_models.dart';
-import '../storage/credentials_store.dart';
-import '../storage/local_store.dart';
+import 'package:assignment_tracker_app/api/canvas_client.dart';
+import 'package:assignment_tracker_app/api/synergy_client.dart';
+import 'package:assignment_tracker_app/config/env.dart';
+import 'package:assignment_tracker_app/domain/data_assembler.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/storage/credentials_store.dart';
+import 'package:assignment_tracker_app/storage/local_store.dart';
 
 // ---------- storage ----------
 

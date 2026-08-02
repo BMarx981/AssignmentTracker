@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/merged.dart';
-import '../domain/priority.dart';
-import '../models/api_models.dart';
-import '../state/student_providers.dart';
-import '../theme/app_theme.dart';
+import 'package:assignment_tracker_app/domain/merged.dart';
+import 'package:assignment_tracker_app/domain/priority.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/state/student_providers.dart';
+import 'package:assignment_tracker_app/theme/app_theme.dart';
 import 'assignment_actions_sheet.dart';
 import 'status_badges.dart';
 

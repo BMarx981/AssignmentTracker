@@ -5,7 +5,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/api_models.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
 import 'api_providers.dart';
 
 class DataNotifier extends AsyncNotifier<DataPayload> {

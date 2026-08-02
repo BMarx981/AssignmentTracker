@@ -2,12 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/merged.dart';
-import '../models/api_models.dart';
-import '../state/assignment_actions.dart';
-import '../state/student_providers.dart';
-import '../theme/app_theme.dart';
-import '../util/format.dart';
+import 'package:assignment_tracker_app/domain/merged.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/state/assignment_actions.dart';
+import 'package:assignment_tracker_app/state/student_providers.dart';
+import 'package:assignment_tracker_app/theme/app_theme.dart';
+import 'package:assignment_tracker_app/util/format.dart';
 
 /// Bottom sheet on mobile, side-anchored Dialog on web/desktop.
 Future<void> showCommentsPanel(

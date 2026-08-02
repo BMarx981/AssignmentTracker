@@ -2,7 +2,7 @@
 // Direct port of mergeData() / buildMerged() / canvasStatus / synStatusToFlag
 // from dashboard.html.
 
-import '../models/api_models.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
 import 'name_utils.dart';
 
 /// Each MergedItem represents one assignment as the UI sees it: either Synergy-

@@ -3,8 +3,8 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/merged.dart';
-import '../domain/priority.dart';
+import 'package:assignment_tracker_app/domain/merged.dart';
+import 'package:assignment_tracker_app/domain/priority.dart';
 import 'data_providers.dart';
 import 'prefs_providers.dart';
 import 'student_providers.dart';

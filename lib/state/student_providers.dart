@@ -4,7 +4,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/api_models.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
 import 'data_providers.dart';
 
 class SelectedStudentIdNotifier extends Notifier<String?> {

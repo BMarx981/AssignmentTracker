@@ -4,7 +4,7 @@
 
 import 'dart:math' as math;
 
-import '../models/api_models.dart';
+import 'package:assignment_tracker_app/models/api_models.dart';
 import 'merged.dart';
 
 class DateRange {
