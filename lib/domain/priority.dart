@@ -23,7 +23,7 @@ class DateRange {
   }
 }
 
-/// Has the item received an actual grade (so any local "Felix says…" claim
+/// Has the item received an actual grade (so any local "Student says…" claim
 /// should be suppressed)?
 bool hasRealGrade(MergedItem item) {
   if (item.score != null && item.pointsPossible != null) {

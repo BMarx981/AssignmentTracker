@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:assignment_tracker_app/dev/demo_data.dart';
+import 'package:assignment_tracker_app/dev/demo_seed.dart';
 import 'package:assignment_tracker_app/models/api_models.dart';
 import 'package:assignment_tracker_app/state/api_providers.dart';
 import 'package:assignment_tracker_app/state/data_providers.dart';

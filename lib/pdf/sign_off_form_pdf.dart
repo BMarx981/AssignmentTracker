@@ -40,14 +40,16 @@ Future<Uint8List> buildSignOffPdf({
         child: pw.Text(
           'One signature per teacher confirms current outstanding work and recovery plan.',
           style: pw.TextStyle(
-              fontSize: 9, color: PdfColors.grey700, fontStyle: pw.FontStyle.italic),
+            fontSize: 9,
+            color: PdfColors.grey700,
+            fontStyle: pw.FontStyle.italic,
+          ),
         ),
       ),
       build: (ctx) => [
         _header(student.name, dateStr, ordered.length),
         pw.SizedBox(height: 10),
-        for (final c in ordered)
-          _courseBlock(c, student, thresholds, range),
+        for (final c in ordered) _courseBlock(c, student, thresholds, range),
       ],
     ),
   );
@@ -92,14 +94,14 @@ pw.Widget _courseBlock(
           (isActionable(it, c.name, thresholds) ||
               it.status == 'half_credit_missing' ||
               it.status == 'not_graded'))
-        it
+        it,
   ]..sort((a, b) => (a.date ?? '').compareTo(b.date ?? ''));
 
   final gradeStr = c.synergyPercent != null
       ? '${pctText(c.synergyPercent)}${(c.synergyLetter ?? '').isNotEmpty ? ' (${c.synergyLetter})' : ''}'
       : (c.canvasAvgWithMissing != null
-          ? '${pctText(c.canvasAvgWithMissing)} (Canvas worst-case)'
-          : '—');
+            ? '${pctText(c.canvasAvgWithMissing)} (Canvas worst-case)'
+            : '—');
 
   return pw.Container(
     margin: const pw.EdgeInsets.only(bottom: 14),
@@ -111,8 +113,10 @@ pw.Widget _courseBlock(
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(c.name,
-            style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+        pw.Text(
+          c.name,
+          style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+        ),
         pw.SizedBox(height: 2),
         pw.Text(
           '${(c.teacher ?? '').isNotEmpty ? 'Teacher: ${c.teacher} · ' : ''}Current grade: $gradeStr',
@@ -123,22 +127,28 @@ pw.Widget _courseBlock(
           pw.Text(
             'No outstanding work flagged in tracker. Please confirm with teacher.',
             style: pw.TextStyle(
-                fontSize: 10,
-                color: PdfColors.grey800,
-                fontStyle: pw.FontStyle.italic),
+              fontSize: 10,
+              color: PdfColors.grey800,
+              fontStyle: pw.FontStyle.italic,
+            ),
           )
         else
           pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               for (final it in outstanding)
-                _itemRow(it, student.comments[it.key] ?? const [],
-                    student.assignmentStatus),
+                _itemRow(
+                  it,
+                  student.comments[it.key] ?? const [],
+                  student.assignmentStatus,
+                ),
             ],
           ),
         pw.SizedBox(height: 8),
-        pw.Text('Teacher notes / plan to recover:',
-            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+        pw.Text(
+          'Teacher notes / plan to recover:',
+          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+        ),
         pw.SizedBox(height: 4),
         _line(),
         pw.SizedBox(height: 6),
@@ -153,9 +163,10 @@ pw.Widget _courseBlock(
                 children: [
                   _line(),
                   pw.SizedBox(height: 2),
-                  pw.Text('Teacher signature',
-                      style: pw.TextStyle(
-                          fontSize: 8, color: PdfColors.grey700)),
+                  pw.Text(
+                    'Teacher signature',
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                  ),
                 ],
               ),
             ),
@@ -167,9 +178,10 @@ pw.Widget _courseBlock(
                 children: [
                   _line(),
                   pw.SizedBox(height: 2),
-                  pw.Text('Date',
-                      style: pw.TextStyle(
-                          fontSize: 8, color: PdfColors.grey700)),
+                  pw.Text(
+                    'Date',
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                  ),
                 ],
               ),
             ),
@@ -185,24 +197,28 @@ pw.Widget _itemRow(
   List<CommentThread> threads,
   Map<String, LocalStatus> statusByKey,
 ) {
-  final due = (it.date != null && it.date!.isNotEmpty) ? 'due ${it.date} · ' : '';
-  final pts = it.pointsPossible != null ? ' (${_numStr(it.pointsPossible!)} pts)' : '';
+  final due = (it.date != null && it.date!.isNotEmpty)
+      ? 'due ${it.date} · '
+      : '';
+  final pts = it.pointsPossible != null
+      ? ' (${_numStr(it.pointsPossible!)} pts)'
+      : '';
   final ls = getLocalStatus(it, statusByKey);
 
   String? claim;
   PdfColor? claimColor;
   if (ls != null) {
     if (ls.submittedDate != null && ls.submittedDate!.isNotEmpty) {
-      claim = ' · Felix says submitted ${fmtPlanDate(ls.submittedDate)}';
+      claim = ' · Student says submitted ${fmtPlanDate(ls.submittedDate)}';
       claimColor = PdfColors.green800;
     } else if (ls.plannedDate != null && ls.plannedDate!.isNotEmpty) {
-      claim = ' · Felix plans by ${fmtPlanDate(ls.plannedDate)}';
+      claim = ' · Student plans by ${fmtPlanDate(ls.plannedDate)}';
       claimColor = PdfColors.blue800;
     } else if (ls.status == 'submitted_pending_feedback') {
-      claim = ' · Felix says already submitted';
+      claim = ' · Student says already submitted';
       claimColor = PdfColors.green800;
     } else if (ls.status == 'complete_pending_submission') {
-      claim = ' · Felix says complete, not yet submitted';
+      claim = ' · Student says complete, not yet submitted';
       claimColor = PdfColors.blue800;
     }
   }
@@ -225,8 +241,7 @@ pw.Widget _itemRow(
           child: pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
-              pw.Text('Date: ',
-                  style: pw.TextStyle(fontSize: 8.5)),
+              pw.Text('Date: ', style: pw.TextStyle(fontSize: 8.5)),
               pw.Expanded(
                 child: pw.Container(
                   decoration: const pw.BoxDecoration(
@@ -246,20 +261,23 @@ pw.Widget _itemRow(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               pw.RichText(
-                text: pw.TextSpan(children: [
-                  pw.TextSpan(
-                    text: '$due${it.name}$pts',
-                    style: pw.TextStyle(fontSize: 10, height: 1.35),
-                  ),
-                  if (claim != null)
+                text: pw.TextSpan(
+                  children: [
                     pw.TextSpan(
-                      text: claim,
-                      style: pw.TextStyle(
+                      text: '$due${it.name}$pts',
+                      style: pw.TextStyle(fontSize: 10, height: 1.35),
+                    ),
+                    if (claim != null)
+                      pw.TextSpan(
+                        text: claim,
+                        style: pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
-                          color: claimColor),
-                    ),
-                ]),
+                          color: claimColor,
+                        ),
+                      ),
+                  ],
+                ),
               ),
               if (threads.isNotEmpty)
                 pw.Container(
@@ -277,9 +295,10 @@ pw.Widget _itemRow(
                         pw.Text(
                           '📝 ${t.text}',
                           style: pw.TextStyle(
-                              fontSize: 9,
-                              fontStyle: pw.FontStyle.italic,
-                              color: PdfColors.grey800),
+                            fontSize: 9,
+                            fontStyle: pw.FontStyle.italic,
+                            color: PdfColors.grey800,
+                          ),
                         ),
                     ],
                   ),
@@ -293,11 +312,11 @@ pw.Widget _itemRow(
 }
 
 pw.Widget _line() => pw.Container(
-      height: 12,
-      decoration: const pw.BoxDecoration(
-        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black)),
-      ),
-    );
+  height: 12,
+  decoration: const pw.BoxDecoration(
+    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.black)),
+  ),
+);
 
 String _numStr(double n) {
   if (n == n.roundToDouble()) return n.toInt().toString();

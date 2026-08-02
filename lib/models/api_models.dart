@@ -31,12 +31,12 @@ class Me {
   });
 
   factory Me.fromJson(Map<String, dynamic> j) => Me(
-        email: j['email'] as String? ?? '',
-        name: j['name'] as String?,
-        picture: j['picture'] as String?,
-        devMode: j['dev_mode'] as bool? ?? false,
-        studentId: j['student_id'] as String?,
-      );
+    email: j['email'] as String? ?? '',
+    name: j['name'] as String?,
+    picture: j['picture'] as String?,
+    devMode: j['dev_mode'] as bool? ?? false,
+    studentId: j['student_id'] as String?,
+  );
 }
 
 class GradeBands {
@@ -45,9 +45,9 @@ class GradeBands {
   const GradeBands({required this.failing, required this.atRisk});
 
   factory GradeBands.fromJson(Map<String, dynamic> j) => GradeBands(
-        failing: (j['failing'] as num?)?.toInt() ?? 60,
-        atRisk: (j['at_risk'] as num?)?.toInt() ?? 75,
-      );
+    failing: (j['failing'] as num?)?.toInt() ?? 60,
+    atRisk: (j['at_risk'] as num?)?.toInt() ?? 75,
+  );
 
   Map<String, dynamic> toJson() => {'failing': failing, 'at_risk': atRisk};
 }
@@ -112,18 +112,20 @@ class SynergyCourse {
   });
 
   factory SynergyCourse.fromJson(Map<String, dynamic> j) => SynergyCourse(
-        synergyName: (j['synergy_name'] as String?) ?? '(unnamed course)',
-        teacher: j['teacher'] as String?,
-        teacherEmail: j['teacher_email'] as String?,
-        letterGrade: j['letter_grade'] as String?,
-        percent: (j['percent'] as num?)?.toDouble(),
-        computedPercent: (j['computed_percent'] as num?)?.toDouble(),
-        missingCount: (j['missing_count'] as num?)?.toInt() ?? 0,
-        policy: j['policy'] as String?,
-        canvasCourseId: j['canvas_course_id']?.toString(),
-        assignments: _asList(j['assignments'],
-            (e) => SynergyAssignment.fromJson(e as Map<String, dynamic>)),
-      );
+    synergyName: (j['synergy_name'] as String?) ?? '(unnamed course)',
+    teacher: j['teacher'] as String?,
+    teacherEmail: j['teacher_email'] as String?,
+    letterGrade: j['letter_grade'] as String?,
+    percent: (j['percent'] as num?)?.toDouble(),
+    computedPercent: (j['computed_percent'] as num?)?.toDouble(),
+    missingCount: (j['missing_count'] as num?)?.toInt() ?? 0,
+    policy: j['policy'] as String?,
+    canvasCourseId: j['canvas_course_id']?.toString(),
+    assignments: _asList(
+      j['assignments'],
+      (e) => SynergyAssignment.fromJson(e as Map<String, dynamic>),
+    ),
+  );
 }
 
 class CanvasAssignment {
@@ -144,13 +146,13 @@ class CanvasAssignment {
   });
 
   factory CanvasAssignment.fromJson(Map<String, dynamic> j) => CanvasAssignment(
-        name: (j['name'] as String?) ?? '(untitled)',
-        dueDate: j['due_date'] as String? ?? j['date'] as String?,
-        pointsPossible: (j['points_possible'] as num?)?.toDouble(),
-        htmlUrl: j['html_url'] as String?,
-        submission: _asT<Map<String, dynamic>>(j['submission']),
-        raw: j,
-      );
+    name: (j['name'] as String?) ?? '(untitled)',
+    dueDate: j['due_date'] as String? ?? j['date'] as String?,
+    pointsPossible: (j['points_possible'] as num?)?.toDouble(),
+    htmlUrl: j['html_url'] as String?,
+    submission: _asT<Map<String, dynamic>>(j['submission']),
+    raw: j,
+  );
 }
 
 class CanvasCourse {
@@ -167,35 +169,43 @@ class CanvasCourse {
   });
 
   factory CanvasCourse.fromJson(Map<String, dynamic> j) => CanvasCourse(
-        name: (j['name'] as String?) ?? '(unnamed course)',
-        assignments: _asList(j['assignments'],
-            (e) => CanvasAssignment.fromJson(e as Map<String, dynamic>)),
-        avgWithMissing: (j['avgWithMissing'] as num?)?.toDouble() ??
-            (j['avg_with_missing'] as num?)?.toDouble(),
-        raw: j,
-      );
+    name: (j['name'] as String?) ?? '(unnamed course)',
+    assignments: _asList(
+      j['assignments'],
+      (e) => CanvasAssignment.fromJson(e as Map<String, dynamic>),
+    ),
+    avgWithMissing:
+        (j['avgWithMissing'] as num?)?.toDouble() ??
+        (j['avg_with_missing'] as num?)?.toDouble(),
+    raw: j,
+  );
 }
 
 class CanvasData {
   final String? generatedAt;
   final String? currentGradingPeriod;
   final List<CanvasCourse> courses;
-  const CanvasData(
-      {this.generatedAt, this.currentGradingPeriod, this.courses = const []});
+  const CanvasData({
+    this.generatedAt,
+    this.currentGradingPeriod,
+    this.courses = const [],
+  });
 
   factory CanvasData.fromJson(Map<String, dynamic> j) => CanvasData(
-        generatedAt: j['generated_at'] as String?,
-        // Canvas fetches store this as `{title, start_date, end_date}`; older
-        // payloads stored just the title. Accept both — an `as String?` cast
-        // on the map form throws and takes the whole assemble() down.
-        currentGradingPeriod: switch (j['current_grading_period']) {
-          final Map m => m['title'] as String?,
-          final String s => s,
-          _ => null,
-        },
-        courses: _asList(j['courses'],
-            (e) => CanvasCourse.fromJson(e as Map<String, dynamic>)),
-      );
+    generatedAt: j['generated_at'] as String?,
+    // Canvas fetches store this as `{title, start_date, end_date}`; older
+    // payloads stored just the title. Accept both — an `as String?` cast
+    // on the map form throws and takes the whole assemble() down.
+    currentGradingPeriod: switch (j['current_grading_period']) {
+      final Map m => m['title'] as String?,
+      final String s => s,
+      _ => null,
+    },
+    courses: _asList(
+      j['courses'],
+      (e) => CanvasCourse.fromJson(e as Map<String, dynamic>),
+    ),
+  );
 }
 
 class SynergyData {
@@ -204,16 +214,19 @@ class SynergyData {
   const SynergyData({this.generatedAt, this.courses = const []});
 
   factory SynergyData.fromJson(Map<String, dynamic> j) => SynergyData(
-        generatedAt: j['generated_at'] as String?,
-        courses: _asList(j['courses'],
-            (e) => SynergyCourse.fromJson(e as Map<String, dynamic>)),
-      );
+    generatedAt: j['generated_at'] as String?,
+    courses: _asList(
+      j['courses'],
+      (e) => SynergyCourse.fromJson(e as Map<String, dynamic>),
+    ),
+  );
 }
 
 /// One row in `assignment_status.json`: the locally-tracked claim about a
-/// specific assignment ("planned by date X" / "Felix says submitted" / etc.).
+/// specific assignment ("planned by date X" / "Student says submitted" / etc.).
 class LocalStatus {
-  final String status; // "planned" | "complete_pending_submission" | "submitted_pending_feedback"
+  final String
+  status; // "planned" | "complete_pending_submission" | "submitted_pending_feedback"
   final String assignmentName;
   final String courseName;
   final String? plannedDate;
@@ -230,13 +243,13 @@ class LocalStatus {
   });
 
   factory LocalStatus.fromJson(Map<String, dynamic> j) => LocalStatus(
-        status: (j['status'] as String?) ?? '',
-        assignmentName: (j['assignment_name'] as String?) ?? '',
-        courseName: (j['course_name'] as String?) ?? '',
-        plannedDate: j['planned_date'] as String?,
-        submittedDate: j['submitted_date'] as String?,
-        updatedAt: j['updated_at'] as String?,
-      );
+    status: (j['status'] as String?) ?? '',
+    assignmentName: (j['assignment_name'] as String?) ?? '',
+    courseName: (j['course_name'] as String?) ?? '',
+    plannedDate: j['planned_date'] as String?,
+    submittedDate: j['submitted_date'] as String?,
+    updatedAt: j['updated_at'] as String?,
+  );
 }
 
 class CommentReply {
@@ -251,11 +264,11 @@ class CommentReply {
     required this.createdAt,
   });
   factory CommentReply.fromJson(Map<String, dynamic> j) => CommentReply(
-        id: (j['id'] as String?) ?? '',
-        text: (j['text'] as String?) ?? '',
-        author: (j['author'] as String?) ?? '',
-        createdAt: (j['created_at'] as String?) ?? '',
-      );
+    id: (j['id'] as String?) ?? '',
+    text: (j['text'] as String?) ?? '',
+    author: (j['author'] as String?) ?? '',
+    createdAt: (j['created_at'] as String?) ?? '',
+  );
 }
 
 class CommentThread {
@@ -272,13 +285,15 @@ class CommentThread {
     this.replies = const [],
   });
   factory CommentThread.fromJson(Map<String, dynamic> j) => CommentThread(
-        id: (j['id'] as String?) ?? '',
-        text: (j['text'] as String?) ?? '',
-        author: (j['author'] as String?) ?? '',
-        createdAt: (j['created_at'] as String?) ?? '',
-        replies: _asList(j['replies'],
-            (e) => CommentReply.fromJson(e as Map<String, dynamic>)),
-      );
+    id: (j['id'] as String?) ?? '',
+    text: (j['text'] as String?) ?? '',
+    author: (j['author'] as String?) ?? '',
+    createdAt: (j['created_at'] as String?) ?? '',
+    replies: _asList(
+      j['replies'],
+      (e) => CommentReply.fromJson(e as Map<String, dynamic>),
+    ),
+  );
 }
 
 class Student {
@@ -310,15 +325,18 @@ class Student {
     final commentsRaw = _asMap<dynamic>(j['comments'], (v) => v);
     final comments = <String, List<CommentThread>>{
       for (final e in commentsRaw.entries)
-        e.key: _asList(e.value,
-            (t) => CommentThread.fromJson(t as Map<String, dynamic>)),
+        e.key: _asList(
+          e.value,
+          (t) => CommentThread.fromJson(t as Map<String, dynamic>),
+        ),
     };
 
     final asRaw = (j['assignment_status'] as Map?)?['entries'] as Map? ?? {};
     final assignmentStatus = <String, LocalStatus>{
       for (final e in asRaw.entries)
-        e.key.toString():
-            LocalStatus.fromJson((e.value as Map).cast<String, dynamic>()),
+        e.key.toString(): LocalStatus.fromJson(
+          (e.value as Map).cast<String, dynamic>(),
+        ),
     };
 
     return Student(
@@ -343,11 +361,14 @@ class DataPayload {
   const DataPayload({required this.students, required this.gradeBands});
 
   factory DataPayload.fromJson(Map<String, dynamic> j) => DataPayload(
-        students: _asList(
-            j['students'], (e) => Student.fromJson(e as Map<String, dynamic>)),
-        gradeBands: GradeBands.fromJson(
-            (j['grade_bands'] as Map?)?.cast<String, dynamic>() ?? const {}),
-      );
+    students: _asList(
+      j['students'],
+      (e) => Student.fromJson(e as Map<String, dynamic>),
+    ),
+    gradeBands: GradeBands.fromJson(
+      (j['grade_bands'] as Map?)?.cast<String, dynamic>() ?? const {},
+    ),
+  );
 
   factory DataPayload.fromJsonString(String s) =>
       DataPayload.fromJson(jsonDecode(s) as Map<String, dynamic>);
@@ -366,11 +387,11 @@ class FetchStatus {
   });
 
   factory FetchStatus.fromJson(Map<String, dynamic> j) => FetchStatus(
-        canvas: (j['canvas'] as String?) ?? 'idle',
-        synergy: (j['synergy'] as String?) ?? 'idle',
-        canvasError: j['canvas_error'] as String?,
-        synergyError: j['synergy_error'] as String?,
-      );
+    canvas: (j['canvas'] as String?) ?? 'idle',
+    synergy: (j['synergy'] as String?) ?? 'idle',
+    canvasError: j['canvas_error'] as String?,
+    synergyError: j['synergy_error'] as String?,
+  );
 
   FetchStatus copyWith({
     String? canvas,
@@ -381,10 +402,12 @@ class FetchStatus {
     return FetchStatus(
       canvas: canvas ?? this.canvas,
       synergy: synergy ?? this.synergy,
-      canvasError:
-          canvasError == _unset ? this.canvasError : canvasError as String?,
-      synergyError:
-          synergyError == _unset ? this.synergyError : synergyError as String?,
+      canvasError: canvasError == _unset
+          ? this.canvasError
+          : canvasError as String?,
+      synergyError: synergyError == _unset
+          ? this.synergyError
+          : synergyError as String?,
     );
   }
 }
@@ -407,25 +430,26 @@ class Credentials {
   });
 
   factory Credentials.fromJson(Map<String, dynamic> j) => Credentials(
-        canvasToken: j['canvas_token'] as String?,
-        canvasBaseUrl: j['canvas_base_url'] as String?,
-        synergyUsername: j['synergy_username'] as String?,
-        synergyPassword: j['synergy_password'] as String?,
-        synergyBaseUrl: j['synergy_base_url'] as String?,
-      );
+    canvasToken: j['canvas_token'] as String?,
+    canvasBaseUrl: j['canvas_base_url'] as String?,
+    synergyUsername: j['synergy_username'] as String?,
+    synergyPassword: j['synergy_password'] as String?,
+    synergyBaseUrl: j['synergy_base_url'] as String?,
+  );
 
   Map<String, dynamic> toJson() => {
-        if (canvasToken != null) 'canvas_token': canvasToken,
-        if (canvasBaseUrl != null) 'canvas_base_url': canvasBaseUrl,
-        if (synergyUsername != null) 'synergy_username': synergyUsername,
-        if (synergyPassword != null) 'synergy_password': synergyPassword,
-        if (synergyBaseUrl != null) 'synergy_base_url': synergyBaseUrl,
-      };
+    if (canvasToken != null) 'canvas_token': canvasToken,
+    if (canvasBaseUrl != null) 'canvas_base_url': canvasBaseUrl,
+    if (synergyUsername != null) 'synergy_username': synergyUsername,
+    if (synergyPassword != null) 'synergy_password': synergyPassword,
+    if (synergyBaseUrl != null) 'synergy_base_url': synergyBaseUrl,
+  };
 }
 
 /// Request body for POST /api/assignments/{key}/status — mirrors AssignmentStatusIn.
 class AssignmentStatusReq {
-  final String status; // planned | complete_pending_submission | submitted_pending_feedback | clear
+  final String
+  status; // planned | complete_pending_submission | submitted_pending_feedback | clear
   final String assignmentName;
   final String courseName;
   final String? studentId;
@@ -440,13 +464,13 @@ class AssignmentStatusReq {
     this.submittedDate,
   });
   Map<String, dynamic> toJson() => {
-        'status': status,
-        'assignment_name': assignmentName,
-        'course_name': courseName,
-        if (studentId != null) 'student_id': studentId,
-        if (plannedDate != null) 'planned_date': plannedDate,
-        if (submittedDate != null) 'submitted_date': submittedDate,
-      };
+    'status': status,
+    'assignment_name': assignmentName,
+    'course_name': courseName,
+    if (studentId != null) 'student_id': studentId,
+    if (plannedDate != null) 'planned_date': plannedDate,
+    if (submittedDate != null) 'submitted_date': submittedDate,
+  };
 }
 
 /// Request body for POST /api/assignments/{key}/comments — mirrors CommentIn.
@@ -456,8 +480,8 @@ class CommentReq {
   final String? replyToId;
   const CommentReq({required this.text, this.studentId, this.replyToId});
   Map<String, dynamic> toJson() => {
-        'text': text,
-        if (studentId != null) 'student_id': studentId,
-        if (replyToId != null) 'reply_to_id': replyToId,
-      };
+    'text': text,
+    if (studentId != null) 'student_id': studentId,
+    if (replyToId != null) 'reply_to_id': replyToId,
+  };
 }

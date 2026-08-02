@@ -10,36 +10,35 @@
 // path the real app uses. Nothing here is imported by release code paths; the
 // Settings entry point is gated on `kDebugMode`.
 
+// This library stays free of Flutter imports on purpose: `tool/seed_demo_data.dart`
+// runs it under plain `dart run` to write the same files without launching the
+// app. `demo_seed.dart` holds the LocalStore-facing wrapper.
+
 import 'package:assignment_tracker_app/domain/name_utils.dart';
-import 'package:assignment_tracker_app/storage/local_store.dart';
 
-/// Writes a full demo dataset (two students, mixed course health, local
-/// statuses, comments, thresholds) into [store], replacing whatever is there.
+/// The full demo dataset as LocalStore-relative paths → JSON-encodable values.
 ///
-/// Credentials are left alone — wiping them would log the user out of a real
-/// account they may still want.
-Future<void> seedDemoData(LocalStore store) async {
-  final anchor = DateTime.now();
-
-  await store.writeCanvasData(buildCanvasPayload(anchor));
-  await store.writeSynergyData(buildSynergyPayload(anchor));
-  await store.writeGradeBands({'failing': 60, 'at_risk': 75});
-
-  for (final student in _students) {
-    await store.writeScoreThresholds(student.id, student.thresholds);
-    await store.writeComments(student.id, student.comments(anchor));
-    await store.writeAssignmentStatus(student.id, {
+/// Returning a plain map rather than writing directly is what lets the same
+/// data reach the store two ways: through `seedDemoData` in-app, or through the
+/// command-line tool that writes into the OS Application Support directory.
+///
+/// Credentials are deliberately absent — seeding must never clobber a real
+/// token the user still wants.
+Map<String, Object> demoFiles(DateTime anchor) {
+  final out = <String, Object>{
+    'canvas_data.json': buildCanvasPayload(anchor),
+    'synergy_data.json': buildSynergyPayload(anchor),
+    'grade_bands.json': {'failing': 60, 'at_risk': 75},
+  };
+  for (final student in demoStudents) {
+    final dir = 'students/${student.id}';
+    out['$dir/score_thresholds.json'] = student.thresholds;
+    out['$dir/comments.json'] = student.comments(anchor);
+    out['$dir/assignment_status.json'] = {
       'entries': student.statusEntries(anchor),
-    });
+    };
   }
-}
-
-/// Deletes seeded data (and everything else in the store) but preserves
-/// credentials so a real fetch still works afterwards.
-Future<void> clearDemoData(LocalStore store) async {
-  final creds = await store.readCredentials();
-  await store.wipe();
-  if (creds != null) await store.writeCredentials(creds);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +52,12 @@ String _day(DateTime anchor, int offsetDays) {
       '${d.day.toString().padLeft(2, '0')}';
 }
 
-String _stamp(DateTime anchor, int offsetDays, {int hour = 23, int minute = 59}) {
+String _stamp(
+  DateTime anchor,
+  int offsetDays, {
+  int hour = 23,
+  int minute = 59,
+}) {
   final d = DateTime.utc(
     anchor.year,
     anchor.month,
@@ -86,8 +90,9 @@ Map<String, dynamic> _syn(
     'points_possible': points,
     'score': score,
     'status': status,
-    'displayed_percent':
-        (score != null && points > 0) ? (score / points * 100).round() : 0,
+    'displayed_percent': (score != null && points > 0)
+        ? (score / points * 100).round()
+        : 0,
     'comment': comment ?? (status == 'missing' ? 'Missing' : null),
   };
 }
@@ -126,9 +131,9 @@ Map<String, dynamic> buildSynergyPayload(DateTime anchor) {
     'generated_at': DateTime.now().toUtc().toIso8601String(),
     'students': [
       {
-        'student_id': _felix.id,
-        'name': _felix.name,
-        'courses': _felixSynergyCourses(anchor),
+        'student_id': _student.id,
+        'name': _student.name,
+        'courses': _studentSynergyCourses(anchor),
       },
       {
         'student_id': _nora.id,
@@ -139,200 +144,384 @@ Map<String, dynamic> buildSynergyPayload(DateTime anchor) {
   };
 }
 
-List<Map<String, dynamic>> _felixSynergyCourses(DateTime anchor) => [
-      // Failing, Canvas-linked, several missing items → dominates the catch-up
-      // list because courseDistress is highest here.
-      _course(
-        'Accelerated Math 6',
-        teacher: 'Alicia James',
-        teacherEmail: 'ajames@demo.invalid',
-        letterGrade: 'D',
-        percent: 63.5,
-        canvasCourseId: '20601',
-        assignments: [
-          _syn(anchor, -24, 'HW: IXL Convert fractions to decimals (DL:04/22)',
-              points: 5, score: 0, status: 'missing'),
-          _syn(anchor, -20, 'Cool Down Quiz: Percent increase and decrease',
-              points: 6,
-              score: 6,
-              status: 'graded',
-              type: 'All Tasks / Assessments'),
-          _syn(anchor, -16, 'HW: IXL Write variable expressions',
-              points: 5, score: 0, status: 'missing'),
-          _syn(anchor, -11, 'Unit 4 Test: Ratios and Percent',
-              points: 25,
-              score: 14,
-              status: 'graded',
-              type: 'All Tasks / Assessments'),
-          _syn(anchor, -6, 'HW #2: IXL Percents of money amounts',
-              points: 5, score: 0, status: 'missing'),
-          _syn(anchor, -4, 'Exit Ticket: Unit rates',
-              points: 4, score: 0, status: 'zero_graded'),
-          _syn(anchor, -2, 'Graded CW: Proportional relationships',
-              points: 10,
-              score: null,
-              status: 'not_graded',
-              type: 'All Tasks / Assessments'),
-          _syn(anchor, 4, 'Unit 5 Project: Data displays',
-              points: 30,
-              score: null,
-              status: 'not_graded',
-              type: 'All Tasks / Assessments'),
-        ],
+List<Map<String, dynamic>> _studentSynergyCourses(DateTime anchor) => [
+  // Failing, Canvas-linked, several missing items → dominates the catch-up
+  // list because courseDistress is highest here.
+  _course(
+    'Accelerated Math 6',
+    teacher: 'Alicia James',
+    teacherEmail: 'ajames@demo.invalid',
+    letterGrade: 'D',
+    percent: 63.5,
+    canvasCourseId: '20601',
+    assignments: [
+      _syn(
+        anchor,
+        -24,
+        'HW: IXL Convert fractions to decimals (DL:04/22)',
+        points: 5,
+        score: 0,
+        status: 'missing',
       ),
-      // Half-credit-for-missing-work policy: distress uses the alt percent,
-      // and half_credit_missing items are deliberately NOT actionable.
-      _course(
-        'Historical Inquiry 6',
-        teacher: 'Marcus Bell',
-        teacherEmail: 'mbell@demo.invalid',
-        letterGrade: 'C',
-        percent: 72.0,
-        policy: 'half_credit_for_missing_work',
-        assignments: [
-          _syn(anchor, -22, 'Primary Source Analysis: Silk Road',
-              points: 10, score: 8, status: 'graded'),
-          _syn(anchor, -15, 'Reading Notes: Chapter 7',
-              points: 6, score: null, status: 'half_credit_missing'),
-          _syn(anchor, -9, 'DBQ Draft: Trade networks',
-              points: 20, score: 0, status: 'missing'),
-          _syn(anchor, -3, 'Reading Notes: Chapter 8',
-              points: 6, score: null, status: 'half_credit_missing'),
-          _syn(anchor, 6, 'DBQ Final: Trade networks',
-              points: 25,
-              score: null,
-              status: 'not_graded',
-              type: 'All Tasks / Assessments'),
-        ],
+      _syn(
+        anchor,
+        -20,
+        'Cool Down Quiz: Percent increase and decrease',
+        points: 6,
+        score: 6,
+        status: 'graded',
+        type: 'All Tasks / Assessments',
       ),
-      // No official percent — forces the computed-percent path and its badge.
-      // No teacher email either, so the "Talk to teacher" fallback shows.
-      _course(
-        'Science 6',
-        teacher: 'Dana Okafor',
-        letterGrade: 'B+',
-        percent: null,
-        computedPercent: 88.2,
-        assignments: [
-          _syn(anchor, -19, 'Lab Report: Density column',
-              points: 20, score: 18, status: 'graded'),
-          _syn(anchor, -12, 'Vocab Quiz: Matter',
-              points: 10,
-              score: 9,
-              status: 'graded',
-              type: 'All Tasks / Assessments'),
-          _syn(anchor, -5, 'Homework: Phase change diagram',
-              points: 5, score: 0, status: 'zero_graded'),
-          _syn(anchor, 8, 'Lab Report: Chemical reactions',
-              points: 20, score: null, status: 'not_graded'),
-        ],
+      _syn(
+        anchor,
+        -16,
+        'HW: IXL Write variable expressions',
+        points: 5,
+        score: 0,
+        status: 'missing',
       ),
-      // Below the failing band → red. Carries the score-threshold case (a
-      // graded 62% item stays actionable) and an in-class-only item, which is
-      // deprioritized by the 0.25 multiplier.
-      _course(
-        'Language Arts 6',
-        teacher: 'Priya Raman',
-        teacherEmail: 'praman@demo.invalid',
-        letterGrade: 'F',
-        percent: 57.0,
-        canvasCourseId: '20604',
-        assignments: [
-          _syn(anchor, -21, 'Essay 2: Character analysis',
-              points: 40,
-              score: 25,
-              status: 'graded',
-              type: 'All Tasks / Assessments'),
-          _syn(anchor, -14, 'IC: Peer review workshop',
-              points: 5, score: 0, status: 'missing'),
-          // Deliberately NOT "Week 6" / "Week 7": normalizeName drops tokens
-          // shorter than three characters, so week numbers vanish and the two
-          // logs would tie on similarity — Canvas would then merge into
-          // whichever came first in the list.
-          _syn(anchor, -10, 'Reading Log: Fiction unit',
-              points: 10, score: 0, status: 'missing'),
-          _syn(anchor, -7, 'Grammar Practice: Clauses',
-              points: 8, score: 5, status: 'graded'),
-          _syn(anchor, -1, 'Reading Log: Poetry unit',
-              points: 10, score: 0, status: 'missing'),
-          _syn(anchor, 9, 'Essay 3: Theme and evidence',
-              points: 40,
-              score: null,
-              status: 'not_graded',
-              type: 'All Tasks / Assessments'),
-        ],
+      _syn(
+        anchor,
+        -11,
+        'Unit 4 Test: Ratios and Percent',
+        points: 25,
+        score: 14,
+        status: 'graded',
+        type: 'All Tasks / Assessments',
       ),
-      // Healthy course — should sort to the bottom and show no catch-up rows.
-      _course(
-        'PE 6',
-        teacher: 'Sam Whitfield',
-        teacherEmail: 'swhitfield@demo.invalid',
-        letterGrade: 'A',
-        percent: 100.0,
-        assignments: [
-          _syn(anchor, -18, 'Participation: Week 5',
-              points: 10, score: 10, status: 'graded'),
-          _syn(anchor, -8, 'Fitness Log: Week 6',
-              points: 10, score: 10, status: 'graded'),
-          _syn(anchor, 2, 'Participation: Week 8',
-              points: 10, score: null, status: 'not_graded'),
-        ],
+      _syn(
+        anchor,
+        -6,
+        'HW #2: IXL Percents of money amounts',
+        points: 5,
+        score: 0,
+        status: 'missing',
       ),
-    ];
+      _syn(
+        anchor,
+        -4,
+        'Exit Ticket: Unit rates',
+        points: 4,
+        score: 0,
+        status: 'zero_graded',
+      ),
+      _syn(
+        anchor,
+        -2,
+        'Graded CW: Proportional relationships',
+        points: 10,
+        score: null,
+        status: 'not_graded',
+        type: 'All Tasks / Assessments',
+      ),
+      _syn(
+        anchor,
+        4,
+        'Unit 5 Project: Data displays',
+        points: 30,
+        score: null,
+        status: 'not_graded',
+        type: 'All Tasks / Assessments',
+      ),
+    ],
+  ),
+  // Half-credit-for-missing-work policy: distress uses the alt percent,
+  // and half_credit_missing items are deliberately NOT actionable.
+  _course(
+    'Historical Inquiry 6',
+    teacher: 'Marcus Bell',
+    teacherEmail: 'mbell@demo.invalid',
+    letterGrade: 'C',
+    percent: 72.0,
+    policy: 'half_credit_for_missing_work',
+    assignments: [
+      _syn(
+        anchor,
+        -22,
+        'Primary Source Analysis: Silk Road',
+        points: 10,
+        score: 8,
+        status: 'graded',
+      ),
+      _syn(
+        anchor,
+        -15,
+        'Reading Notes: Chapter 7',
+        points: 6,
+        score: null,
+        status: 'half_credit_missing',
+      ),
+      _syn(
+        anchor,
+        -9,
+        'DBQ Draft: Trade networks',
+        points: 20,
+        score: 0,
+        status: 'missing',
+      ),
+      _syn(
+        anchor,
+        -3,
+        'Reading Notes: Chapter 8',
+        points: 6,
+        score: null,
+        status: 'half_credit_missing',
+      ),
+      _syn(
+        anchor,
+        6,
+        'DBQ Final: Trade networks',
+        points: 25,
+        score: null,
+        status: 'not_graded',
+        type: 'All Tasks / Assessments',
+      ),
+    ],
+  ),
+  // No official percent — forces the computed-percent path and its badge.
+  // No teacher email either, so the "Talk to teacher" fallback shows.
+  _course(
+    'Science 6',
+    teacher: 'Dana Okafor',
+    letterGrade: 'B+',
+    percent: null,
+    computedPercent: 88.2,
+    assignments: [
+      _syn(
+        anchor,
+        -19,
+        'Lab Report: Density column',
+        points: 20,
+        score: 18,
+        status: 'graded',
+      ),
+      _syn(
+        anchor,
+        -12,
+        'Vocab Quiz: Matter',
+        points: 10,
+        score: 9,
+        status: 'graded',
+        type: 'All Tasks / Assessments',
+      ),
+      _syn(
+        anchor,
+        -5,
+        'Homework: Phase change diagram',
+        points: 5,
+        score: 0,
+        status: 'zero_graded',
+      ),
+      _syn(
+        anchor,
+        8,
+        'Lab Report: Chemical reactions',
+        points: 20,
+        score: null,
+        status: 'not_graded',
+      ),
+    ],
+  ),
+  // Below the failing band → red. Carries the score-threshold case (a
+  // graded 62% item stays actionable) and an in-class-only item, which is
+  // deprioritized by the 0.25 multiplier.
+  _course(
+    'Language Arts 6',
+    teacher: 'Priya Raman',
+    teacherEmail: 'praman@demo.invalid',
+    letterGrade: 'F',
+    percent: 57.0,
+    canvasCourseId: '20604',
+    assignments: [
+      _syn(
+        anchor,
+        -21,
+        'Essay 2: Character analysis',
+        points: 40,
+        score: 25,
+        status: 'graded',
+        type: 'All Tasks / Assessments',
+      ),
+      _syn(
+        anchor,
+        -14,
+        'IC: Peer review workshop',
+        points: 5,
+        score: 0,
+        status: 'missing',
+      ),
+      // Deliberately NOT "Week 6" / "Week 7": normalizeName drops tokens
+      // shorter than three characters, so week numbers vanish and the two
+      // logs would tie on similarity — Canvas would then merge into
+      // whichever came first in the list.
+      _syn(
+        anchor,
+        -10,
+        'Reading Log: Fiction unit',
+        points: 10,
+        score: 0,
+        status: 'missing',
+      ),
+      _syn(
+        anchor,
+        -7,
+        'Grammar Practice: Clauses',
+        points: 8,
+        score: 5,
+        status: 'graded',
+      ),
+      _syn(
+        anchor,
+        -1,
+        'Reading Log: Poetry unit',
+        points: 10,
+        score: 0,
+        status: 'missing',
+      ),
+      _syn(
+        anchor,
+        9,
+        'Essay 3: Theme and evidence',
+        points: 40,
+        score: null,
+        status: 'not_graded',
+        type: 'All Tasks / Assessments',
+      ),
+    ],
+  ),
+  // Healthy course — should sort to the bottom and show no catch-up rows.
+  _course(
+    'PE 6',
+    teacher: 'Sam Whitfield',
+    teacherEmail: 'swhitfield@demo.invalid',
+    letterGrade: 'A',
+    percent: 100.0,
+    assignments: [
+      _syn(
+        anchor,
+        -18,
+        'Participation: Week 5',
+        points: 10,
+        score: 10,
+        status: 'graded',
+      ),
+      _syn(
+        anchor,
+        -8,
+        'Fitness Log: Week 6',
+        points: 10,
+        score: 10,
+        status: 'graded',
+      ),
+      _syn(
+        anchor,
+        2,
+        'Participation: Week 8',
+        points: 10,
+        score: null,
+        status: 'not_graded',
+      ),
+    ],
+  ),
+];
 
 List<Map<String, dynamic>> _noraSynergyCourses(DateTime anchor) => [
-      _course(
-        'Algebra 1',
-        teacher: 'Rosa Delgado',
-        teacherEmail: 'rdelgado@demo.invalid',
-        letterGrade: 'A-',
-        percent: 91.0,
-        canvasCourseId: '30701',
-        assignments: [
-          _syn(anchor, -17, 'Quiz: Systems of equations',
-              points: 20,
-              score: 19,
-              status: 'graded',
-              type: 'All Tasks / Assessments'),
-          _syn(anchor, -3, 'HW 6.2: Substitution',
-              points: 5, score: 0, status: 'missing'),
-          _syn(anchor, 5, 'Unit 6 Test',
-              points: 50,
-              score: null,
-              status: 'not_graded',
-              type: 'All Tasks / Assessments'),
-        ],
+  _course(
+    'Algebra 1',
+    teacher: 'Rosa Delgado',
+    teacherEmail: 'rdelgado@demo.invalid',
+    letterGrade: 'A-',
+    percent: 91.0,
+    canvasCourseId: '30701',
+    assignments: [
+      _syn(
+        anchor,
+        -17,
+        'Quiz: Systems of equations',
+        points: 20,
+        score: 19,
+        status: 'graded',
+        type: 'All Tasks / Assessments',
       ),
-      _course(
-        'Biology',
-        teacher: 'Henry Osei',
-        teacherEmail: 'hosei@demo.invalid',
-        letterGrade: 'C+',
-        percent: 78.5,
-        assignments: [
-          _syn(anchor, -13, 'Cell Organelle Diagram',
-              points: 15, score: 11, status: 'graded'),
-          _syn(anchor, -6, 'Reading Guide: Mitosis',
-              points: 10, score: 0, status: 'missing'),
-          _syn(anchor, 3, 'Lab: Osmosis in potato cores',
-              points: 25, score: null, status: 'not_graded'),
-        ],
+      _syn(
+        anchor,
+        -3,
+        'HW 6.2: Substitution',
+        points: 5,
+        score: 0,
+        status: 'missing',
       ),
-      _course(
-        'Spanish 2',
-        teacher: 'Elena Castillo',
-        teacherEmail: 'ecastillo@demo.invalid',
-        letterGrade: 'B',
-        percent: 85.0,
-        canvasCourseId: '30703',
-        assignments: [
-          _syn(anchor, -11, 'Vocabulario Unidad 4',
-              points: 10, score: 9, status: 'graded'),
-          _syn(anchor, -2, 'Composición: Mi rutina diaria',
-              points: 20, score: null, status: 'not_graded'),
-        ],
+      _syn(
+        anchor,
+        5,
+        'Unit 6 Test',
+        points: 50,
+        score: null,
+        status: 'not_graded',
+        type: 'All Tasks / Assessments',
       ),
-    ];
+    ],
+  ),
+  _course(
+    'Biology',
+    teacher: 'Henry Osei',
+    teacherEmail: 'hosei@demo.invalid',
+    letterGrade: 'C+',
+    percent: 78.5,
+    assignments: [
+      _syn(
+        anchor,
+        -13,
+        'Cell Organelle Diagram',
+        points: 15,
+        score: 11,
+        status: 'graded',
+      ),
+      _syn(
+        anchor,
+        -6,
+        'Reading Guide: Mitosis',
+        points: 10,
+        score: 0,
+        status: 'missing',
+      ),
+      _syn(
+        anchor,
+        3,
+        'Lab: Osmosis in potato cores',
+        points: 25,
+        score: null,
+        status: 'not_graded',
+      ),
+    ],
+  ),
+  _course(
+    'Spanish 2',
+    teacher: 'Elena Castillo',
+    teacherEmail: 'ecastillo@demo.invalid',
+    letterGrade: 'B',
+    percent: 85.0,
+    canvasCourseId: '30703',
+    assignments: [
+      _syn(
+        anchor,
+        -11,
+        'Vocabulario Unidad 4',
+        points: 10,
+        score: 9,
+        status: 'graded',
+      ),
+      _syn(
+        anchor,
+        -2,
+        'Composición: Mi rutina diaria',
+        points: 20,
+        score: null,
+        status: 'not_graded',
+      ),
+    ],
+  ),
+];
 
 // ---------------------------------------------------------------------------
 // canvas
@@ -370,8 +559,9 @@ Map<String, dynamic> _canvasAssignment(
       'score': score,
       'grade': score?.toString(),
       'entered_score': score,
-      'graded_at':
-          workflowState == 'graded' ? _stamp(anchor, day + 2, hour: 9) : null,
+      'graded_at': workflowState == 'graded'
+          ? _stamp(anchor, day + 2, hour: 9)
+          : null,
     },
   };
 }
@@ -383,15 +573,15 @@ Map<String, dynamic> buildCanvasPayload(DateTime anchor) {
     'generated_at': DateTime.now().toUtc().toIso8601String(),
     'students': [
       {
-        'student_id': _felix.id,
-        'name': _felix.name,
+        'student_id': _student.id,
+        'name': _student.name,
         'canvas_user_id': 8801,
         'current_grading_period': {
           'title': 'Quarter 4',
           'start_date': _day(anchor, -45),
           'end_date': _day(anchor, 20),
         },
-        'courses': _felixCanvasCourses(anchor),
+        'courses': _studentCanvasCourses(anchor),
         'generated_at': DateTime.now().toUtc().toIso8601String(),
       },
       {
@@ -413,77 +603,142 @@ Map<String, dynamic> buildCanvasPayload(DateTime anchor) {
 // Names here deliberately echo the Synergy titles so nameSimilarity clears the
 // 0.5 bar and the rows merge into source='both'. The odd one out in each list
 // stays Canvas-only, which is the other branch worth looking at.
-List<Map<String, dynamic>> _felixCanvasCourses(DateTime anchor) => [
-      {
-        'id': 20601,
-        'name': 'Accelerated Math 6-JAMES-YR-2026',
-        'course_code': 'MATH6ACC',
-        'current_score': 63.5,
-        'current_grade': 'D',
-        'assignments': [
-          _canvasAssignment(anchor, 991001, -24,
-              'HW: IXL Convert fractions to decimals',
-              points: 5, workflowState: 'unsubmitted'),
-          _canvasAssignment(anchor, 991002, -11,
-              'Unit 4 Test: Ratios and Percent',
-              points: 25, workflowState: 'graded', score: 14),
-          _canvasAssignment(anchor, 991003, -2,
-              'Graded CW: Proportional relationships',
-              points: 10, workflowState: 'submitted'),
-          _canvasAssignment(
-              anchor, 991004, 7, 'Khan Academy: Unit 5 warmup set',
-              points: 8, workflowState: 'unsubmitted'),
-        ],
-      },
-      {
-        'id': 20604,
-        'name': 'Language Arts 6-RAMAN-YR-2026',
-        'course_code': 'LA6',
-        'current_score': 57.0,
-        'current_grade': 'F',
-        'assignments': [
-          _canvasAssignment(anchor, 992001, -21, 'Essay 2: Character analysis',
-              points: 40, workflowState: 'graded', score: 25),
-          // Canvas-only and graded at 60% — below the 70% threshold seeded for
-          // this course, which is the only way a graded row stays actionable.
-          // (A Synergy-sourced graded row flattens to status 'ok' and the
-          // threshold never sees it.)
-          _canvasAssignment(anchor, 992004, -13, 'Vocabulary Quiz: Greek roots',
-              points: 20, workflowState: 'graded', score: 12),
-          _canvasAssignment(anchor, 992002, -1, 'Reading Log: Poetry unit',
-              points: 10, workflowState: 'unsubmitted'),
-          _canvasAssignment(anchor, 992003, 9, 'Essay 3: Theme and evidence',
-              points: 40, workflowState: 'unsubmitted'),
-        ],
-      },
-    ];
+List<Map<String, dynamic>> _studentCanvasCourses(DateTime anchor) => [
+  {
+    'id': 20601,
+    'name': 'Accelerated Math 6-JAMES-YR-2026',
+    'course_code': 'MATH6ACC',
+    'current_score': 63.5,
+    'current_grade': 'D',
+    'assignments': [
+      _canvasAssignment(
+        anchor,
+        991001,
+        -24,
+        'HW: IXL Convert fractions to decimals',
+        points: 5,
+        workflowState: 'unsubmitted',
+      ),
+      _canvasAssignment(
+        anchor,
+        991002,
+        -11,
+        'Unit 4 Test: Ratios and Percent',
+        points: 25,
+        workflowState: 'graded',
+        score: 14,
+      ),
+      _canvasAssignment(
+        anchor,
+        991003,
+        -2,
+        'Graded CW: Proportional relationships',
+        points: 10,
+        workflowState: 'submitted',
+      ),
+      _canvasAssignment(
+        anchor,
+        991004,
+        7,
+        'Khan Academy: Unit 5 warmup set',
+        points: 8,
+        workflowState: 'unsubmitted',
+      ),
+    ],
+  },
+  {
+    'id': 20604,
+    'name': 'Language Arts 6-RAMAN-YR-2026',
+    'course_code': 'LA6',
+    'current_score': 57.0,
+    'current_grade': 'F',
+    'assignments': [
+      _canvasAssignment(
+        anchor,
+        992001,
+        -21,
+        'Essay 2: Character analysis',
+        points: 40,
+        workflowState: 'graded',
+        score: 25,
+      ),
+      // Canvas-only and graded at 60% — below the 70% threshold seeded for
+      // this course, which is the only way a graded row stays actionable.
+      // (A Synergy-sourced graded row flattens to status 'ok' and the
+      // threshold never sees it.)
+      _canvasAssignment(
+        anchor,
+        992004,
+        -13,
+        'Vocabulary Quiz: Greek roots',
+        points: 20,
+        workflowState: 'graded',
+        score: 12,
+      ),
+      _canvasAssignment(
+        anchor,
+        992002,
+        -1,
+        'Reading Log: Poetry unit',
+        points: 10,
+        workflowState: 'unsubmitted',
+      ),
+      _canvasAssignment(
+        anchor,
+        992003,
+        9,
+        'Essay 3: Theme and evidence',
+        points: 40,
+        workflowState: 'unsubmitted',
+      ),
+    ],
+  },
+];
 
 List<Map<String, dynamic>> _noraCanvasCourses(DateTime anchor) => [
-      {
-        'id': 30701,
-        'name': 'Algebra 1-DELGADO-YR-2026',
-        'course_code': 'ALG1',
-        'current_score': 91.0,
-        'current_grade': 'A-',
-        'assignments': [
-          _canvasAssignment(anchor, 993001, -3, 'HW 6.2: Substitution',
-              points: 5, workflowState: 'unsubmitted'),
-          _canvasAssignment(anchor, 993002, 5, 'Unit 6 Test',
-              points: 50, workflowState: 'unsubmitted'),
-        ],
-      },
-      {
-        'id': 30703,
-        'name': 'Spanish 2-CASTILLO-YR-2026',
-        'course_code': 'SPAN2',
-        'current_score': 85.0,
-        'current_grade': 'B',
-        'assignments': [
-          _canvasAssignment(anchor, 994001, -2, 'Composición: Mi rutina diaria',
-              points: 20, workflowState: 'submitted'),
-        ],
-      },
-    ];
+  {
+    'id': 30701,
+    'name': 'Algebra 1-DELGADO-YR-2026',
+    'course_code': 'ALG1',
+    'current_score': 91.0,
+    'current_grade': 'A-',
+    'assignments': [
+      _canvasAssignment(
+        anchor,
+        993001,
+        -3,
+        'HW 6.2: Substitution',
+        points: 5,
+        workflowState: 'unsubmitted',
+      ),
+      _canvasAssignment(
+        anchor,
+        993002,
+        5,
+        'Unit 6 Test',
+        points: 50,
+        workflowState: 'unsubmitted',
+      ),
+    ],
+  },
+  {
+    'id': 30703,
+    'name': 'Spanish 2-CASTILLO-YR-2026',
+    'course_code': 'SPAN2',
+    'current_score': 85.0,
+    'current_grade': 'B',
+    'assignments': [
+      _canvasAssignment(
+        anchor,
+        994001,
+        -2,
+        'Composición: Mi rutina diaria',
+        points: 20,
+        workflowState: 'submitted',
+      ),
+    ],
+  },
+];
 
 // ---------------------------------------------------------------------------
 // per-student local state
@@ -495,14 +750,11 @@ List<Map<String, dynamic>> _noraCanvasCourses(DateTime anchor) => [
 String _synKey(String course, String name) =>
     assignmentKey(canvasId: null, courseName: course, assignmentName: name);
 
-String _canvasKey(int id) => assignmentKey(
-      canvasId: '$id',
-      courseName: null,
-      assignmentName: null,
-    );
+String _canvasKey(int id) =>
+    assignmentKey(canvasId: '$id', courseName: null, assignmentName: null);
 
-class _DemoStudent {
-  const _DemoStudent({
+class DemoStudent {
+  const DemoStudent({
     required this.id,
     required this.name,
     required this.thresholds,
@@ -524,41 +776,55 @@ Map<String, dynamic> _thread(
   String author,
   int day, {
   List<Map<String, dynamic>> replies = const [],
-}) =>
-    {
-      'id': id,
-      'text': text,
-      'author': author,
-      'created_at': _stamp(anchor, day, hour: 19, minute: 12),
-      'replies': replies,
-    };
+}) => {
+  'id': id,
+  'text': text,
+  'author': author,
+  'created_at': _stamp(anchor, day, hour: 19, minute: 12),
+  'replies': replies,
+};
 
-final _felix = _DemoStudent(
-  id: '294651',
-  name: 'Felix',
+final _student = DemoStudent(
+  id: '990001',
+  name: 'Student',
   // Language Arts is graded harshly, so anything at or below 70% still counts
   // as actionable — this is what makes the 62% essay show up in catch-up.
   thresholds: const {'Language Arts 6': 70},
   comments: (anchor) => {
     _synKey('Accelerated Math 6', 'HW #2: IXL Percents of money amounts'): [
-      _thread(anchor, 'demo-c1', 'Says the IXL link was broken all week.', 'me',
-          -5,
-          replies: [
-            {
-              'id': 'demo-r1',
-              'text': 'Emailed Ms. James, waiting to hear back.',
-              'author': 'me',
-              'created_at': _stamp(anchor, -4, hour: 8, minute: 30),
-            },
-          ]),
+      _thread(
+        anchor,
+        'demo-c1',
+        'Says the IXL link was broken all week.',
+        'me',
+        -5,
+        replies: [
+          {
+            'id': 'demo-r1',
+            'text': 'Emailed Ms. James, waiting to hear back.',
+            'author': 'me',
+            'created_at': _stamp(anchor, -4, hour: 8, minute: 30),
+          },
+        ],
+      ),
     ],
     _canvasKey(992002): [
-      _thread(anchor, 'demo-c2', 'Reading log is in the blue folder, not typed.',
-          'me', -1),
+      _thread(
+        anchor,
+        'demo-c2',
+        'Reading log is in the blue folder, not typed.',
+        'me',
+        -1,
+      ),
     ],
     _synKey('Historical Inquiry 6', 'DBQ Draft: Trade networks'): [
       _thread(
-          anchor, 'demo-c3', 'Needs the outline before he can start.', 'me', -8),
+        anchor,
+        'demo-c3',
+        'Needs the outline before he can start.',
+        'me',
+        -8,
+      ),
     ],
   },
   statusEntries: (anchor) => {
@@ -598,14 +864,19 @@ final _felix = _DemoStudent(
   },
 );
 
-final _nora = _DemoStudent(
-  id: '301884',
+final _nora = DemoStudent(
+  id: '990002',
   name: 'Nora',
   thresholds: const {},
   comments: (anchor) => {
     _synKey('Biology', 'Reading Guide: Mitosis'): [
-      _thread(anchor, 'demo-c4', 'Lost the packet, asked for a reprint.', 'me',
-          -4),
+      _thread(
+        anchor,
+        'demo-c4',
+        'Lost the packet, asked for a reprint.',
+        'me',
+        -4,
+      ),
     ],
   },
   statusEntries: (anchor) => {
@@ -618,4 +889,4 @@ final _nora = _DemoStudent(
   },
 );
 
-final _students = <_DemoStudent>[_felix, _nora];
+final demoStudents = <DemoStudent>[_student, _nora];
