@@ -19,7 +19,11 @@ class RankedItem {
 
 /// The merged-course list for the currently selected student. Filters out
 /// hidden courses, but does not yet apply the date range (consumers do that).
-final mergedCoursesProvider = Provider<List<MergedCourse>>((ref) {
+///
+/// All four providers below are autoDispose for the reason spelled out on
+/// [selectedStudentProvider]: a derived Provider that outlives its listeners
+/// goes stale while inactive and then flushes mid-build on the next mount.
+final mergedCoursesProvider = Provider.autoDispose<List<MergedCourse>>((ref) {
   final student = ref.watch(selectedStudentProvider).value;
   if (student == null) return const [];
   final hidden = ref
@@ -31,7 +35,7 @@ final mergedCoursesProvider = Provider<List<MergedCourse>>((ref) {
       .toList(growable: false);
 });
 
-final rankedAssignmentsProvider = Provider<List<RankedItem>>((ref) {
+final rankedAssignmentsProvider = Provider.autoDispose<List<RankedItem>>((ref) {
   final courses = ref.watch(mergedCoursesProvider);
   final studentAsync = ref.watch(selectedStudentProvider);
   final student = studentAsync.value;
@@ -57,12 +61,12 @@ final rankedAssignmentsProvider = Provider<List<RankedItem>>((ref) {
   return out;
 });
 
-final top20Provider = Provider<List<RankedItem>>((ref) {
+final top20Provider = Provider.autoDispose<List<RankedItem>>((ref) {
   final ranked = ref.watch(rankedAssignmentsProvider);
   return ranked.take(20).toList(growable: false);
 });
 
-final gradeBandsProvider = Provider<dynamic>((ref) {
+final gradeBandsProvider = Provider.autoDispose<dynamic>((ref) {
   // Re-export from the latest DataPayload for convenient widget access.
   return ref.watch(dataProvider).whenData((p) => p.gradeBands);
 });

@@ -15,9 +15,19 @@ class DataNotifier extends AsyncNotifier<DataPayload> {
     return assembler.assemble();
   }
 
-  /// Re-reads everything from disk. Cheap — no network involved.
+  /// Re-reads everything from disk. Cheap — no network involved, so it does
+  /// NOT emit an intermediate [AsyncLoading]: the old payload stays on screen
+  /// until the new one replaces it.
+  ///
+  /// Emitting a valueless loading state here made every consumer branching on
+  /// `.when(loading: ...)` swap to a spinner, unmounting the dashboard subtree
+  /// and remounting it when the data landed. That remount is what tripped
+  /// "setState() called during build" — the derived providers go inactive
+  /// while unmounted, so the scheduler skips their refresh, and the first
+  /// `ref.watch` of the fresh subtree ends up flushing them mid-build.
+  /// Callers that want a progress indicator own one (RefreshIndicator, the
+  /// fetch buttons in settings).
   Future<void> refresh() async {
-    state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final assembler = await ref.read(dataAssemblerProvider.future);
       return assembler.assemble();

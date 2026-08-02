@@ -23,7 +23,14 @@ final selectedStudentIdProvider =
 
 /// The currently selected Student inside the latest DataPayload. Falls back to
 /// the first student in the payload if no explicit selection has been made.
-final selectedStudentProvider = Provider<AsyncValue<Student?>>((ref) {
+///
+/// autoDispose on purpose: a plain Provider outlives its listeners, so when the
+/// screens watching it unmount it lingers alive-but-inactive. The scheduler
+/// skips inactive elements on refresh, so an upstream change leaves it stale
+/// until the next widget mounts and flushes it *during build* — which throws
+/// "setState() called during build" from the ProviderScope. Disposing instead
+/// means the next mount always builds it fresh.
+final selectedStudentProvider = Provider.autoDispose<AsyncValue<Student?>>((ref) {
   final data = ref.watch(dataProvider);
   final selectedId = ref.watch(selectedStudentIdProvider);
   return data.whenData((p) {
