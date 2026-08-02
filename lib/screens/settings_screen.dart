@@ -9,6 +9,7 @@ import 'package:assignment_tracker_app/router.dart';
 import 'package:assignment_tracker_app/state/api_providers.dart';
 import 'package:assignment_tracker_app/state/data_providers.dart';
 import 'package:assignment_tracker_app/state/fetch_providers.dart';
+import 'package:assignment_tracker_app/state/parent_gate_provider.dart';
 import 'package:assignment_tracker_app/state/prefs_providers.dart';
 import 'package:assignment_tracker_app/state/priority_providers.dart';
 import 'package:assignment_tracker_app/state/student_providers.dart';
@@ -46,6 +47,8 @@ class SettingsScreen extends ConsumerWidget {
                 _ScoreThresholdsSection(),
                 SizedBox(height: 20),
                 _HiddenCoursesSection(),
+                SizedBox(height: 20),
+                _ParentControlsSection(),
                 SizedBox(height: 20),
                 _CredentialsSection(),
                 SizedBox(height: 20),
@@ -86,6 +89,50 @@ class _Section extends StatelessWidget {
                   fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           child,
+        ],
+      ),
+    );
+  }
+}
+
+// ---------- Parent controls ----------
+
+/// Just the door. Everything behind it lives on `/parent`, which asks for the
+/// passcode before showing anything.
+class _ParentControlsSection extends ConsumerWidget {
+  const _ParentControlsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppColors.of(context);
+    final configured =
+        ref.watch(parentPasscodeSetProvider).value ?? true;
+
+    return _Section(
+      title: 'Parent controls',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            configured
+                ? 'Excused days — sick days and the like — are set here. '
+                    'Weekends already never break a streak.'
+                : 'No passcode set yet. Set one so excused days stay out of '
+                    "your student's reach.",
+            style: TextStyle(fontSize: 12.5, color: colors.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              onPressed: () => context.push('/parent'),
+              icon: Icon(
+                configured ? Icons.lock_outline : Icons.lock_open_outlined,
+                size: 18,
+              ),
+              label: Text(configured ? 'Open' : 'Set a passcode'),
+            ),
+          ),
         ],
       ),
     );

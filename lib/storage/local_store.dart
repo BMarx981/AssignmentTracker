@@ -18,6 +18,8 @@ import 'package:path_provider/path_provider.dart';
 ///     assignment_status.json
 ///     comments.json
 ///     score_thresholds.json
+///     rewards.json
+///     excused_days.json
 /// ```
 ///
 /// Canvas and Synergy fetches each produce a single payload covering all
@@ -146,6 +148,38 @@ class LocalStore {
         '${_studentDir(studentId)}/score_thresholds.json',
         thresholds,
       );
+
+  Future<Map<String, dynamic>?> readRewards(String studentId) async {
+    final raw = await _readJson('${_studentDir(studentId)}/rewards.json');
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
+  Future<void> writeRewards(
+    String studentId,
+    Map<String, dynamic> data,
+  ) =>
+      _writeJson('${_studentDir(studentId)}/rewards.json', data);
+
+  Future<Map<String, dynamic>?> readExcusedDays(String studentId) async {
+    final raw = await _readJson('${_studentDir(studentId)}/excused_days.json');
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
+  Future<void> writeExcusedDays(
+    String studentId,
+    Map<String, dynamic> data,
+  ) =>
+      _writeJson('${_studentDir(studentId)}/excused_days.json', data);
+
+  // ---------- parent gate (global) ----------
+
+  Future<Map<String, dynamic>?> readParentGate() async {
+    final raw = await _readJson('parent_gate.json');
+    return raw is Map ? raw.cast<String, dynamic>() : null;
+  }
+
+  Future<void> writeParentGate(Map<String, dynamic> data) =>
+      _writeJson('parent_gate.json', data);
 
   Future<void> deleteStudent(String studentId) async {
     final dir = Directory('${_root.path}/${_studentDir(studentId)}');

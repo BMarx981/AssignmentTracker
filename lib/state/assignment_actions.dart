@@ -8,9 +8,11 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:assignment_tracker_app/domain/rewards.dart';
 import 'package:assignment_tracker_app/util/format.dart';
 import 'api_providers.dart';
 import 'data_providers.dart';
+import 'rewards_providers.dart';
 import 'student_providers.dart';
 
 class AssignmentActions {
@@ -31,6 +33,7 @@ class AssignmentActions {
     required String courseName,
     DateTime? plannedDate,
     DateTime? submittedDate,
+    bool award = true,
   }) async {
     const allowed = {
       'planned',
@@ -64,6 +67,36 @@ class AssignmentActions {
 
     await store.writeAssignmentStatus(sid, {'entries': entries});
     await _ref.read(dataProvider.notifier).refresh();
+
+    if (award) {
+      await _awardFor(
+        status: status,
+        key: key,
+        assignmentName: assignmentName,
+      );
+    }
+  }
+
+  /// Hands out points for a status claim. Deduped on `<kind>:<assignmentKey>`
+  /// inside the ledger, so clearing a status and re-setting it pays once —
+  /// and clearing never takes points back.
+  Future<void> _awardFor({
+    required String status,
+    required String key,
+    required String assignmentName,
+  }) async {
+    final kind = switch (status) {
+      'planned' => RewardKind.planned,
+      'complete_pending_submission' => RewardKind.finished,
+      'submitted_pending_feedback' => RewardKind.turnedIn,
+      _ => null,
+    };
+    if (kind == null) return;
+    await _ref.read(rewardServiceProvider).award(
+          kind: kind,
+          id: '${kind.name}:$key',
+          label: assignmentName,
+        );
   }
 
   Future<void> markSubmittedNow({

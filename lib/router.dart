@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'screens/course_detail_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/fetch_status_screen.dart';
+import 'screens/parent_controls_screen.dart';
+import 'screens/rewards_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/sign_off_form_screen.dart';
 import 'screens/teacher_checkin_screen.dart';
@@ -27,6 +29,10 @@ GoRouter buildRouter({required String initialLocation}) => GoRouter(
         GoRoute(
             path: '/teacher-checkin',
             builder: (ctx, st) => const TeacherCheckInScreen()),
+        GoRoute(path: '/rewards', builder: (ctx, st) => const RewardsScreen()),
+        GoRoute(
+            path: '/parent',
+            builder: (ctx, st) => const ParentControlsScreen()),
       ],
     );
 

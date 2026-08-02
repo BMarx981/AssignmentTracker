@@ -145,6 +145,9 @@ class CatchUpRow extends ConsumerWidget {
       courseName: previous.courseName,
       plannedDate: _parseYmd(previous.plannedDate),
       submittedDate: _parseYmd(previous.submittedDate),
+      // Putting back what was already there isn't an accomplishment — undo
+      // should not fire a second celebration on the way out.
+      award: false,
     );
   }
 

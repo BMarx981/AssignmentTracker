@@ -60,6 +60,7 @@ import 'package:assignment_tracker_app/domain/assignment_situation.dart'
         kTeacherCheckInNote,
         kThoughtHandedInNote;
 import 'package:assignment_tracker_app/domain/name_utils.dart';
+import 'package:assignment_tracker_app/domain/rewards.dart' show visitPoints;
 
 /// The full demo dataset as LocalStore-relative paths → JSON-encodable values.
 ///
@@ -82,6 +83,8 @@ Map<String, Object> demoFiles(DateTime anchor) {
     out['$dir/assignment_status.json'] = {
       'entries': student.statusEntries(anchor),
     };
+    out['$dir/rewards.json'] = student.rewards(anchor);
+    out['$dir/excused_days.json'] = student.excusedDays(anchor);
   }
   return out;
 }
@@ -105,6 +108,31 @@ int _weekendOffset(DateTime anchor) {
   if (wd == DateTime.saturday || wd == DateTime.sunday) return 0;
   return DateTime.saturday - wd;
 }
+
+/// Day offsets of the last [count] school days ending at [anchor], oldest
+/// first. A weekend anchor walks back to the Friday.
+///
+/// Seeded check-ins have to land on school days, not raw calendar days.
+/// Weekends are skipped by the streak, so a run seeded on consecutive calendar
+/// days would read as a different length depending on which weekday the demo
+/// was seeded — and would silently bridge into the historical block behind it.
+List<int> _schoolDayOffsets(DateTime anchor, int count) {
+  final out = <int>[];
+  var offset = 0;
+  while (out.length < count) {
+    final day = DateTime(anchor.year, anchor.month, anchor.day + offset);
+    if (day.weekday != DateTime.saturday && day.weekday != DateTime.sunday) {
+      out.add(offset);
+    }
+    offset--;
+  }
+  return out.reversed.toList(growable: false);
+}
+
+/// The school day Milo was out sick: the 4th of the 8 in his run, counting
+/// back. Shared by his ledger (which has no check-in on it) and his excused
+/// days (which is what stops that hole from resetting the run).
+int _miloSickDay(DateTime anchor) => _schoolDayOffsets(anchor, 8)[3];
 
 String _stamp(
   DateTime anchor,
@@ -1196,6 +1224,8 @@ class DemoStudent {
     required this.thresholds,
     required this.comments,
     required this.statusEntries,
+    this.rewards = _noRewards,
+    this.excusedDays = _noExcusedDays,
   });
 
   final String id;
@@ -1203,7 +1233,40 @@ class DemoStudent {
   final Map<String, int> thresholds;
   final Map<String, dynamic> Function(DateTime) comments;
   final Map<String, dynamic> Function(DateTime) statusEntries;
+
+  /// The rewards ledger (`rewards.json` shape). Defaults to empty so at least
+  /// one demo student exercises the rewards screen's empty state.
+  final Map<String, dynamic> Function(DateTime) rewards;
+
+  /// Parent-excused days (`excused_days.json` shape).
+  final Map<String, dynamic> Function(DateTime) excusedDays;
 }
+
+Map<String, dynamic> _noRewards(DateTime _) =>
+    const <String, dynamic>{'events': <Map<String, dynamic>>[]};
+
+Map<String, dynamic> _noExcusedDays(DateTime _) =>
+    const <String, dynamic>{'days': <Map<String, dynamic>>[]};
+
+/// One reward-ledger entry. [id] must match the dedupe key the app would
+/// generate for the same action (`<kind>:<assignmentKey>`), so re-doing a
+/// seeded action doesn't pay out twice.
+Map<String, dynamic> _reward(
+  DateTime anchor,
+  String id,
+  String kind,
+  int points,
+  String label,
+  int day,
+) => {
+  'id': id,
+  'kind': kind,
+  'points': points,
+  // Noon UTC lands on the same calendar day in every real timezone, which
+  // matters because the streak counts local days.
+  'at': _stamp(anchor, day, hour: 12, minute: 0),
+  'label': label,
+};
 
 Map<String, dynamic> _thread(
   DateTime anchor,
@@ -1384,6 +1447,63 @@ final _milo = DemoStudent(
       'submitted_date': _day(anchor, -19),
     },
   },
+  // A worked-in ledger: 179 points, a live 7-day check-in streak carrying the
+  // escalated +8 rate, and a mix of earned and half-finished badges so the
+  // badge case shows both states. Most entries are historical — assignments
+  // that have long since fallen out of the visible date range — which is
+  // exactly how a real ledger outlives the data it was earned on.
+  // One school day in the middle of the run has nothing on it — Milo was
+  // home sick — and the parent excused it. That's what keeps the run at 7
+  // instead of resetting it to 3.
+  excusedDays: (anchor) => {
+    'days': [
+      {'date': _day(anchor, _miloSickDay(anchor)), 'reason': 'Sick'},
+    ],
+  },
+  rewards: (anchor) {
+    // The live run, on school days — the streak skips weekends, so seeding on
+    // raw calendar days would read as a different length depending on which
+    // weekday the demo was seeded.
+    final s = _schoolDayOffsets(anchor, 8);
+    final sick = _miloSickDay(anchor);
+    final worked = s.where((o) => o != sick).toList(growable: false);
+    return {
+      'events': [
+        // Seven days of showing up around one excused day, priced the way
+        // visitPoints() would have priced them as the run built: the sick day
+        // is skipped, so the day after it is day 4 and not a fresh day 1.
+        for (final (i, offset) in worked.indexed)
+          _reward(anchor, 'visit:${_day(anchor, offset)}', 'visit',
+              visitPoints(i + 1), 'Day ${i + 1} check-in', offset),
+
+        // Recent work, on the same school days as the check-ins so it rides
+        // the run rather than extending it.
+        _reward(anchor, 'turnedIn:demo-h10', 'turnedIn', 10, 'Reading Log Week 7', s[1]),
+        _reward(anchor, 'planned:demo-h11', 'planned', 2, 'Book Talk Slides', s[2]),
+        _reward(anchor, 'teacherEmail:Historical Inquiry 6:${_day(anchor, s[4])}', 'teacherEmail', 15, 'Historical Inquiry 6', s[4]),
+        _reward(anchor, 'turnedIn:demo-h12', 'turnedIn', 10, 'Chapter 7 Questions', s[4]),
+        _reward(anchor, 'finished:demo-h13', 'finished', 5, 'Math Practice Set B', s[5]),
+        _reward(anchor, 'turnedIn:demo-h14', 'turnedIn', 10, 'Math Practice Set B', s[5]),
+        _reward(anchor, 'planned:${_canvasKey(991001)}', 'planned', 2, _mathPlannedTonight, s[7]),
+        _reward(anchor, 'planned:${_synKey('Accelerated Math 6', _mathPlannedCustom)}', 'planned', 2, _mathPlannedCustom, s[7]),
+
+        // Everything older sits behind a gap wide enough to contain a school
+        // day with nothing on it, so the run terminates where it should
+        // instead of bridging back into this block.
+        _reward(anchor, 'turnedIn:demo-h1', 'turnedIn', 10, 'Unit 1 Test Corrections', -44),
+        _reward(anchor, 'turnedIn:demo-h2', 'turnedIn', 10, 'Cell Diagram Lab', -42),
+        _reward(anchor, 'planned:demo-h3', 'planned', 2, 'Persuasive Essay Outline', -41),
+        _reward(anchor, 'turnedIn:${_canvasKey(992012)}', 'turnedIn', 10, _laEssayTwo, -39),
+        _reward(anchor, 'finished:demo-h4', 'finished', 5, 'Vocabulary Set 4', -38),
+        _reward(anchor, 'turnedIn:demo-h5', 'turnedIn', 10, 'Vocabulary Set 4', -37),
+        _reward(anchor, 'teacherEmail:Language Arts 6:${_day(anchor, -34)}', 'teacherEmail', 15, 'Language Arts 6', -34),
+        _reward(anchor, 'turnedIn:demo-h6', 'turnedIn', 10, 'Rome Timeline', -32),
+        _reward(anchor, 'planned:demo-h7', 'planned', 2, 'DBQ Draft', -29),
+        _reward(anchor, 'turnedIn:demo-h8', 'turnedIn', 10, 'Reading Log Week 6', -28),
+        _reward(anchor, 'finished:demo-h9', 'finished', 5, 'Science Phase Change Lab', -26),
+      ],
+    };
+  },
 );
 
 final _nora = DemoStudent(
@@ -1403,6 +1523,20 @@ final _nora = DemoStudent(
       'assignment_name': _algSubstitution,
       'course_name': 'Algebra 1',
     },
+  },
+  // Just starting out: 23 points, level 0, and a 2-day streak — the shape the
+  // dashboard pill takes before there is much to show.
+  rewards: (anchor) {
+    final s = _schoolDayOffsets(anchor, 2);
+    return {
+      'events': [
+        _reward(anchor, 'visit:${_day(anchor, s[0])}', 'visit', 3, 'Day 1 check-in', s[0]),
+        _reward(anchor, 'visit:${_day(anchor, s[1])}', 'visit', 3, 'Day 2 check-in', s[1]),
+        _reward(anchor, 'planned:demo-n1', 'planned', 2, 'Mitosis Packet', s[0]),
+        _reward(anchor, 'finished:${_canvasKey(993001)}', 'finished', 5, _algSubstitution, s[0]),
+        _reward(anchor, 'turnedIn:demo-n2', 'turnedIn', 10, 'Lab Safety Quiz', s[1]),
+      ],
+    };
   },
 );
 
@@ -1453,6 +1587,23 @@ final _pearl = DemoStudent(
       'course_name': 'Pre-Algebra 8',
       'planned_date': _day(anchor, 1),
     },
+  },
+  // A lapsed run: two days around the teacher email a few weeks back, then
+  // nothing until today. Streak back to 1, best still 2 — the state the "come
+  // back tomorrow" strip exists for, and proof that a real lapse (school days
+  // missed, not a weekend) still resets.
+  rewards: (anchor) {
+    final recent = _schoolDayOffsets(anchor, 1);
+    final old = _schoolDayOffsets(anchor, 12).take(2).toList();
+    return {
+      'events': [
+        _reward(anchor, 'visit:${_day(anchor, old[0])}', 'visit', 3, 'Day 1 check-in', old[0]),
+        _reward(anchor, 'visit:${_day(anchor, old[1])}', 'visit', 3, 'Day 2 check-in', old[1]),
+        _reward(anchor, 'teacherEmail:Art 8:${_day(anchor, old[1])}', 'teacherEmail', 15, 'Art 8', old[1]),
+        _reward(anchor, 'visit:${_day(anchor, recent[0])}', 'visit', 3, 'Day 1 check-in', recent[0]),
+        _reward(anchor, 'planned:${_synKey('Pre-Algebra 8', _preAlgRetake)}', 'planned', 2, _preAlgRetake, recent[0]),
+      ],
+    };
   },
 );
 

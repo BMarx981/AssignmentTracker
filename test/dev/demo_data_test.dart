@@ -15,11 +15,21 @@ import 'package:assignment_tracker_app/domain/assignment_situation.dart';
 import 'package:assignment_tracker_app/domain/data_assembler.dart';
 import 'package:assignment_tracker_app/domain/merged.dart';
 import 'package:assignment_tracker_app/domain/priority.dart';
+import 'package:assignment_tracker_app/domain/rewards.dart';
+import 'package:assignment_tracker_app/domain/streak_calendar.dart';
 import 'package:assignment_tracker_app/models/api_models.dart';
 import 'package:assignment_tracker_app/storage/local_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+/// The streak calendar a seeded student is meant to be scored against.
+StreakCalendar _calendarOf(DemoStudent student, DateTime anchor) {
+  final days = (student.excusedDays(anchor)['days'] as List)
+      .map((d) => (d as Map)['date'] as String)
+      .toSet();
+  return StreakCalendar(excusedDays: days);
+}
 
 class _TempPathProvider extends PathProviderPlatform
     with MockPlatformInterfaceMixin {
@@ -397,7 +407,132 @@ void main() {
     expect(files.keys, contains('canvas_data.json'));
     expect(files.keys, contains('synergy_data.json'));
     expect(files.keys, contains('grade_bands.json'));
-    expect(files.length, 3 + demoStudents.length * 3);
+    expect(files.length, 3 + demoStudents.length * 5);
+  });
+
+  test('the seeded reward ledgers cover the rewards screen top to bottom', () {
+    final now = DateTime.now();
+    final ledgers = <String, RewardLedger>{
+      for (final s in demoStudents)
+        s.name: RewardLedger.fromJson(s.rewards(now)),
+    };
+    final calendars = <String, StreakCalendar>{
+      for (final s in demoStudents) s.name: _calendarOf(s, now),
+    };
+
+    // Milo carries the fleshed-out one: mid-level, a live check-in run at the
+    // escalated rate, and a badge case with both earned and locked tiles.
+    final milo = ledgers['Milo']!;
+    expect(milo.totalPoints, 179);
+    expect(milo.level.name, 'On a roll');
+    expect(milo.nextLevel?.name, 'Locked in');
+    expect(milo.currentStreak(calendar: calendars['Milo']), 7);
+    final earned = milo.earnedBadgeIds(calendar: calendars['Milo']);
+    expect(
+      earned,
+      containsAll(['first-step', 'turned-in-5', 'spoke-up-1', 'streak-3', 'streak-7']),
+    );
+    expect(
+      milo.badges(calendar: calendars['Milo'])
+          .any((b) => !b.earned && b.progress > 0),
+      isTrue,
+    );
+
+    // Nora is early days; Pearl's run lapsed and restarted, which is the
+    // state the "come back tomorrow" strip exists for; Otis has nothing,
+    // so the empty state sits on a real profile.
+    final nora = ledgers['Nora']!;
+    expect(nora.totalPoints, 23);
+    expect(nora.currentStreak(calendar: calendars['Nora']), 2);
+
+    final pearl = ledgers['Pearl']!;
+    expect(pearl.earnedBadgeIds(), contains('spoke-up-1'));
+    expect(pearl.currentStreak(calendar: calendars['Pearl']), 1);
+    expect(pearl.bestStreak(calendar: calendars['Pearl']), 2);
+
+    expect(ledgers['Otis']!.isEmpty, isTrue);
+
+    // Milo is the one with a sick day on file, so the parent controls screen
+    // has a real row to show and not just its empty state.
+    expect(calendars['Milo']!.excusedDays, hasLength(1));
+    expect(calendars['Nora']!.excusedDays, isEmpty);
+  });
+
+  test('the seeded runs land on school days, so they read the same any day',
+      () {
+    DemoStudent demo(String name) =>
+        demoStudents.firstWhere((s) => s.name == name);
+    // Seeding on a Monday and on a Friday has to produce the same streak, or
+    // the demo tells a different story depending on when it was set up.
+    for (final anchor in [
+      DateTime(2026, 9, 14), // Mon
+      DateTime(2026, 9, 16), // Wed
+      DateTime(2026, 9, 18), // Fri
+      DateTime(2026, 9, 19), // Sat
+      DateTime(2026, 9, 20), // Sun
+    ]) {
+      final milo = RewardLedger.fromJson(demo('Milo').rewards(anchor));
+      final nora = RewardLedger.fromJson(demo('Nora').rewards(anchor));
+      final pearl =
+          RewardLedger.fromJson(demo('Pearl').rewards(anchor));
+      expect(
+        milo.currentStreak(now: anchor, calendar: _calendarOf(demo('Milo'), anchor)),
+        7,
+        reason: 'Milo on $anchor',
+      );
+      expect(milo.totalPoints, 179, reason: 'Milo on $anchor');
+      expect(nora.currentStreak(now: anchor), 2, reason: 'Nora on $anchor');
+      // Milo's run only reaches 7 because the sick day is excused; scored
+      // against the bare calendar it stops dead at the hole.
+      expect(milo.currentStreak(now: anchor), 4,
+          reason: 'Milo unexcused on $anchor');
+      expect(pearl.currentStreak(now: anchor), 1, reason: 'Pearl on $anchor');
+      expect(pearl.bestStreak(), 2, reason: 'Pearl on $anchor');
+    }
+  });
+
+  test('seeded check-ins are priced the way the app would have priced them',
+      () {
+    final anchor = DateTime.now();
+    for (final student in demoStudents) {
+      final events = RewardLedger.fromJson(student.rewards(anchor)).events;
+      final calendar = _calendarOf(student, anchor);
+      // Replay the ledger in order; each visit has to match what the streak
+      // it was standing on would have paid.
+      var replayed = RewardLedger.empty;
+      for (final e in events) {
+        if (e.kind == RewardKind.visit) {
+          final day =
+              replayed.streakAfterActivityOn(e.at.toLocal(), calendar: calendar);
+          expect(
+            e.points,
+            visitPoints(day),
+            reason: '${student.name} ${e.id} should pay day-$day rate',
+          );
+        }
+        replayed = replayed.add(e);
+      }
+    }
+  });
+
+  test('seeded reward ids match the keys the app would award against', () async {
+    final ledger = RewardLedger.fromJson(await store.readRewards('990001'));
+    final statuses = studentNamed('Milo').assignmentStatus;
+    // Every id built off a real assignment key has to name a key that exists,
+    // or re-doing that action in the app would pay a second time.
+    // Visits key on a date and teacher emails on a course, so only the
+    // assignment-keyed ids are checkable here; `demo-h*` are stand-ins for
+    // work that has aged out of the payload entirely.
+    final assignmentIds = ledger.events
+        .map((e) => e.id)
+        .where((id) => !id.contains('demo-h'))
+        .where((id) => !id.startsWith('teacherEmail:'))
+        .where((id) => !id.startsWith('visit:'));
+    expect(assignmentIds, isNotEmpty);
+    for (final id in assignmentIds) {
+      final key = id.substring(id.indexOf(':') + 1);
+      expect(statuses.containsKey(key), isTrue, reason: 'unknown key in $id');
+    }
   });
 
   test('clearDemoData empties the store but keeps credentials', () async {

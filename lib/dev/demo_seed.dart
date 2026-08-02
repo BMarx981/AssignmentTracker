@@ -21,6 +21,8 @@ Future<void> seedDemoData(LocalStore store) async {
     await store.writeAssignmentStatus(student.id, {
       'entries': student.statusEntries(anchor),
     });
+    await store.writeRewards(student.id, student.rewards(anchor));
+    await store.writeExcusedDays(student.id, student.excusedDays(anchor));
   }
 }
 

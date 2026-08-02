@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:assignment_tracker_app/domain/assignment_situation.dart';
 import 'package:assignment_tracker_app/domain/merged.dart';
+import 'package:assignment_tracker_app/domain/rewards.dart';
 import 'package:assignment_tracker_app/models/api_models.dart';
 import 'package:assignment_tracker_app/router.dart';
 import 'package:assignment_tracker_app/state/assignment_actions.dart';
+import 'package:assignment_tracker_app/state/rewards_providers.dart';
 import 'package:assignment_tracker_app/state/student_providers.dart';
 import 'package:assignment_tracker_app/state/teacher_checkin_provider.dart';
 import 'package:assignment_tracker_app/theme/app_theme.dart';
+import 'package:assignment_tracker_app/util/format.dart';
 import 'package:assignment_tracker_app/util/gmail_launcher.dart';
 
 /// Everything the student flagged with "Remind me to ask teacher", grouped by
@@ -169,7 +172,17 @@ class _CourseGroup extends ConsumerWidget {
       messenger?.showSnackBar(
         const SnackBar(content: Text("Couldn't open Gmail compose window.")),
       );
+      return;
     }
+
+    // Deliberately one thumbs-up per teacher per day: emailing about three
+    // things in one message is one act of asking, and reopening the same
+    // compose window twice shouldn't pay twice.
+    await ref.read(rewardServiceProvider).award(
+          kind: RewardKind.teacherEmail,
+          id: 'teacherEmail:${course.name}:${ymd(DateTime.now())}',
+          label: course.name,
+        );
   }
 
   String _emailBody(Student? student) {

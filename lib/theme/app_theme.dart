@@ -53,6 +53,8 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.neutralChip,
     required this.actionChip,
     required this.neutralPill,
+    required this.reward,
+    required this.streak,
     required this.dangerText,
     required this.dangerBodyText,
     required this.codeBackground,
@@ -104,6 +106,25 @@ class AppColors extends ThemeExtension<AppColors> {
   final BadgeStyle actionChip; // "Plan date" / "Already done"
   final BadgeStyle neutralPill;
 
+  /// Points chip, level card, and the celebration toast — a warm gold that
+  /// belongs to the rewards system and nothing else, so "you earned something"
+  /// never reads as a status change.
+  final BadgeStyle reward;
+
+  /// The day-streak flame.
+  final Color streak;
+
+  /// Confetti spray for milestone celebrations. Reuses the badge foregrounds
+  /// so the burst stays inside the palette in both brightnesses.
+  List<Color> get confetti => [
+        reward.foreground,
+        success.foreground,
+        actionChip.foreground,
+        dueSoon.foreground,
+        inClass.foreground,
+        streak,
+      ];
+
   /// Error headline / destructive accent on a plain background.
   final Color dangerText;
 
@@ -150,6 +171,8 @@ class AppColors extends ThemeExtension<AppColors> {
     neutralChip: BadgeStyle(Color(0xFFF1F5F9), Color(0xFF334155)),
     actionChip: BadgeStyle(Color(0xFFE0E7FF), Color(0xFF1E3A8A)),
     neutralPill: BadgeStyle(Color(0xFFEEEEEE), Color(0xFF333333)),
+    reward: BadgeStyle(Color(0xFFFFF3D4), Color(0xFF8A5A00)),
+    streak: Color(0xFFE06A20),
     dangerText: Color(0xFF8A1A1A),
     dangerBodyText: Color(0xFF4A1818),
     codeBackground: Color(0xFF2A1010),
@@ -189,6 +212,8 @@ class AppColors extends ThemeExtension<AppColors> {
     neutralChip: BadgeStyle(Color(0xFF262A31), Color(0xFFC5CAD3)),
     actionChip: BadgeStyle(Color(0xFF232744), Color(0xFFB3C0FF)),
     neutralPill: BadgeStyle(Color(0xFF2A2E36), Color(0xFFD5D7DE)),
+    reward: BadgeStyle(Color(0xFF3A3012), Color(0xFFF6D07A)),
+    streak: Color(0xFFFF9A52),
     dangerText: Color(0xFFFF9B90),
     dangerBodyText: Color(0xFFE8C3BE),
     codeBackground: Color(0xFF241313),

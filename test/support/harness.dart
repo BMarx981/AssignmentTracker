@@ -40,6 +40,7 @@ class RecordingActions extends AssignmentActions {
     required String courseName,
     DateTime? plannedDate,
     DateTime? submittedDate,
+    bool award = true,
   }) async {
     log.statuses.add(
       plannedDate == null ? status : '$status:${ymd(plannedDate)}',

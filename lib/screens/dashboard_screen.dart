@@ -13,6 +13,7 @@ import 'package:assignment_tracker_app/state/teacher_checkin_provider.dart';
 import 'package:assignment_tracker_app/theme/app_theme.dart';
 import 'package:assignment_tracker_app/widgets/catch_up_row.dart';
 import 'package:assignment_tracker_app/widgets/course_summary_card.dart';
+import 'package:assignment_tracker_app/widgets/reward_pill.dart';
 import 'package:assignment_tracker_app/widgets/student_switcher.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -112,7 +113,7 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   sliver: SliverToBoxAdapter(
                     child: Text(
-                      "You're caught up. Nice.",
+                      'Nothing missing or zero-graded in this date range.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.of(context).textMuted,
                           ),
@@ -322,35 +323,41 @@ class _Summary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    if (catchUpCount == 0) {
-      return Text(
-        studentName,
-        style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            color: colors.textStrong),
-      );
-    }
     final noun = catchUpCount == 1 ? 'thing' : 'things';
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          studentName,
-          style: TextStyle(
-              fontSize: 13,
-              color: colors.textFaint,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                studentName,
+                style: TextStyle(
+                    fontSize: 13,
+                    color: colors.textFaint,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                catchUpCount == 0
+                    ? "You're all caught up 🎉"
+                    : 'You have $catchUpCount $noun to catch up on.',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textStrong,
+                    height: 1.25),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'You have $catchUpCount $noun to catch up on.',
-          style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: colors.textStrong,
-              height: 1.25),
+        const SizedBox(width: 12),
+        // Nudged down to sit on the headline's baseline rather than the name's.
+        const Padding(
+          padding: EdgeInsets.only(top: 14),
+          child: RewardPill(),
         ),
       ],
     );
