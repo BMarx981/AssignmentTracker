@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../domain/fetch_error.dart';
 import '../state/fetch_providers.dart';
+import '../theme/app_theme.dart';
 
 class FetchStatusScreen extends ConsumerWidget {
   const FetchStatusScreen({super.key});
@@ -84,7 +85,7 @@ class _SourceCard extends StatelessWidget {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+        side: BorderSide(color: AppColors.of(context).border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -126,18 +127,19 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final (label, color) = switch (state) {
-      'running' => ('Fetching…', const Color(0xFF1B3F88)),
-      'done' => ('Up to date', const Color(0xFF065F46)),
-      'error' => ('Failed', const Color(0xFF8A1A1A)),
-      _ => ('Not fetched yet', const Color(0xFF666666)),
+      'running' => ('Fetching…', c.info.foreground),
+      'done' => ('Up to date', c.success.foreground),
+      'error' => ('Failed', c.dangerText),
+      _ => ('Not fetched yet', c.textSecondary),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -176,14 +178,15 @@ class _FriendlyErrorState extends State<_FriendlyError> {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     final e = widget.error;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEECEC),
+        color: c.danger.background,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF8A1A1A).withValues(alpha: 0.2)),
+        border: Border.all(color: c.dangerText.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,12 +194,12 @@ class _FriendlyErrorState extends State<_FriendlyError> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(e.icon, color: const Color(0xFF8A1A1A), size: 22),
+              Icon(e.icon, color: c.dangerText, size: 22),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(e.headline,
-                    style: const TextStyle(
-                        color: Color(0xFF8A1A1A),
+                    style: TextStyle(
+                        color: c.dangerText,
                         fontSize: 15,
                         fontWeight: FontWeight.w700)),
               ),
@@ -209,8 +212,8 @@ class _FriendlyErrorState extends State<_FriendlyError> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(e.body,
-                    style: const TextStyle(
-                        color: Color(0xFF4A1818), fontSize: 14)),
+                    style:
+                        TextStyle(color: c.dangerBodyText, fontSize: 14)),
                 if (e.suggestions.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   ...e.suggestions.map((s) => Padding(
@@ -218,12 +221,12 @@ class _FriendlyErrorState extends State<_FriendlyError> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('• ',
-                                style: TextStyle(color: Color(0xFF4A1818))),
+                            Text('• ',
+                                style: TextStyle(color: c.dangerBodyText)),
                             Expanded(
                                 child: Text(s,
-                                    style: const TextStyle(
-                                        color: Color(0xFF4A1818),
+                                    style: TextStyle(
+                                        color: c.dangerBodyText,
                                         fontSize: 13))),
                           ],
                         ),
@@ -238,8 +241,8 @@ class _FriendlyErrorState extends State<_FriendlyError> {
                         icon: const Icon(Icons.settings_outlined, size: 16),
                         label: const Text('Open Settings'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF8A1A1A),
-                          side: const BorderSide(color: Color(0xFF8A1A1A)),
+                          foregroundColor: c.dangerText,
+                          side: BorderSide(color: c.dangerText),
                           padding:
                               const EdgeInsets.symmetric(horizontal: 12),
                         ),
@@ -250,7 +253,7 @@ class _FriendlyErrorState extends State<_FriendlyError> {
                         onPressed: () =>
                             setState(() => _showDetails = !_showDetails),
                         style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF8A1A1A),
+                          foregroundColor: c.dangerText,
                           padding:
                               const EdgeInsets.symmetric(horizontal: 8),
                         ),
@@ -280,11 +283,12 @@ class _TechnicalDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A1010),
+        color: c.codeBackground,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
@@ -292,10 +296,10 @@ class _TechnicalDetails extends StatelessWidget {
         children: [
           TextButton.icon(
             onPressed: () => Clipboard.setData(ClipboardData(text: text)),
-            icon: const Icon(Icons.copy_outlined,
-                size: 14, color: Color(0xFFEFD9D9)),
-            label: const Text('Copy',
-                style: TextStyle(color: Color(0xFFEFD9D9))),
+            icon: Icon(Icons.copy_outlined,
+                size: 14, color: c.codeForeground),
+            label: Text('Copy',
+                style: TextStyle(color: c.codeForeground)),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               minimumSize: const Size(0, 28),
@@ -303,10 +307,10 @@ class _TechnicalDetails extends StatelessWidget {
           ),
           SelectableText(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'monospace',
               fontSize: 11,
-              color: Color(0xFFEFD9D9),
+              color: c.codeForeground,
               height: 1.4,
             ),
           ),
@@ -321,26 +325,28 @@ class _RunningBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = AppColors.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8EEFB),
+        color: c.info.background,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF1B3F88).withValues(alpha: 0.2)),
+        border:
+            Border.all(color: c.info.foreground.withValues(alpha: 0.25)),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          SizedBox(
+          const SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(strokeWidth: 2.5),
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Fetching… this can take 10–30 seconds.',
               style: TextStyle(
-                color: Color(0xFF1B3F88),
+                color: c.info.foreground,
                 fontWeight: FontWeight.w600,
               ),
             ),

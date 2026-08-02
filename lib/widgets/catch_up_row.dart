@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../domain/merged.dart';
 import '../models/api_models.dart';
+import '../theme/app_theme.dart';
 import 'assignment_actions_sheet.dart';
 import 'status_badges.dart';
 
@@ -21,7 +22,8 @@ class CatchUpRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final badge = primaryBadgeFor(item, statusByKey);
+    final colors = AppColors.of(context);
+    final badge = primaryBadgeFor(context, item, statusByKey);
     return InkWell(
       onTap: () => showAssignmentActionsSheet(
         context,
@@ -33,8 +35,8 @@ class CatchUpRow extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE3E3E3)),
+          color: colors.card,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -43,10 +45,10 @@ class CatchUpRow extends StatelessWidget {
             Expanded(
               child: Text(
                 item.name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+                  color: colors.textStrong,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -57,8 +59,7 @@ class CatchUpRow extends StatelessWidget {
               badge,
             ],
             const SizedBox(width: 4),
-            const Icon(Icons.chevron_right,
-                size: 18, color: Color(0xFFBBBBBB)),
+            Icon(Icons.chevron_right, size: 18, color: colors.chevron),
           ],
         ),
       ),

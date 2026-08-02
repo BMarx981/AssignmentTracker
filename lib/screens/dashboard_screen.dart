@@ -9,6 +9,7 @@ import '../state/data_providers.dart';
 import '../state/prefs_providers.dart';
 import '../state/priority_providers.dart';
 import '../state/student_providers.dart';
+import '../theme/app_theme.dart';
 import '../widgets/catch_up_row.dart';
 import '../widgets/course_summary_card.dart';
 import '../widgets/student_switcher.dart';
@@ -47,7 +48,8 @@ class DashboardScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Text('Failed to load: $e',
-                style: const TextStyle(color: Colors.red)),
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ),
         data: (payload) => const _DashboardBody(),
@@ -110,13 +112,14 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
                     child: Text(
                       "You're caught up. Nice.",
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: const Color(0xFF555555),
+                            color: AppColors.of(context).textMuted,
                           ),
                     ),
                   ),
                 )
               else
-                ..._buildCatchUpSlivers(catchUp, student.assignmentStatus),
+                ..._buildCatchUpSlivers(
+                    context, catchUp, student.assignmentStatus),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
                 sliver: SliverToBoxAdapter(
@@ -134,16 +137,16 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
                                 ? Icons.expand_less
                                 : Icons.expand_more,
                             size: 18,
-                            color: const Color(0xFF666666),
+                            color: AppColors.of(context).textSecondary,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             _showCourses
                                 ? 'Hide courses'
                                 : 'Show all courses',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF666666),
+                              color: AppColors.of(context).textSecondary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -187,6 +190,7 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
   }
 
   List<Widget> _buildCatchUpSlivers(
+    BuildContext context,
     _CatchUpData data,
     Map<String, LocalStatus> statusByKey,
   ) {
@@ -198,10 +202,10 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
           sliver: SliverToBoxAdapter(
             child: Text(
               group.course.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF888888),
+                color: AppColors.of(context).textFaint,
                 letterSpacing: 0.3,
               ),
             ),
@@ -294,13 +298,14 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     if (catchUpCount == 0) {
       return Text(
         studentName,
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1A1A)),
+            color: colors.textStrong),
       );
     }
     final noun = catchUpCount == 1 ? 'thing' : 'things';
@@ -309,19 +314,19 @@ class _Summary extends StatelessWidget {
       children: [
         Text(
           studentName,
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 13,
-              color: Color(0xFF888888),
+              color: colors.textFaint,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.3),
         ),
         const SizedBox(height: 4),
         Text(
           'You have $catchUpCount $noun to catch up on.',
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1A1A1A),
+              color: colors.textStrong,
               height: 1.25),
         ),
       ],
@@ -342,18 +347,19 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.school_outlined, size: 64, color: Color(0xFF8A8A8A)),
+            Icon(Icons.school_outlined,
+                size: 64, color: AppColors.of(context).iconMuted),
             const SizedBox(height: 16),
             const Text(
               'No data yet',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Add your Canvas token and Synergy credentials in Settings, '
               'then run a fetch to pull in your assignments.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF666666)),
+              style: TextStyle(color: AppColors.of(context).textSecondary),
             ),
             const SizedBox(height: 24),
             FilledButton.icon(

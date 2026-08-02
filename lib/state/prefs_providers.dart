@@ -1,12 +1,14 @@
 // User prefs persisted to shared_preferences:
 //   - hidden_courses_<studentId>   : List<String>
 //   - date_range_start / date_range_end : YYYY-MM-DD strings
+//   - theme_mode                   : 'system' | 'light' | 'dark'
 //
 // Plus a Riverpod-friendly cache of the SharedPreferences instance.
 //
 // NOTE: Riverpod 3 API — family notifiers receive the arg via constructor,
 // not via a FamilyAsyncNotifier base class.
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -81,3 +83,29 @@ class DateRangeNotifier extends AsyncNotifier<DateRange> {
 
 final dateRangeProvider =
     AsyncNotifierProvider<DateRangeNotifier, DateRange>(DateRangeNotifier.new);
+
+/// Light / dark / follow-the-OS. Defaults to [ThemeMode.system] both as the
+/// unset value and while prefs are still loading, so the very first frame
+/// already matches the platform brightness.
+class ThemeModeNotifier extends AsyncNotifier<ThemeMode> {
+  static const _key = 'theme_mode';
+
+  @override
+  Future<ThemeMode> build() async {
+    final prefs = await ref.watch(sharedPrefsProvider.future);
+    return switch (prefs.getString(_key)) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+  }
+
+  Future<void> set(ThemeMode mode) async {
+    state = AsyncData(mode);
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    await prefs.setString(_key, mode.name);
+  }
+}
+
+final themeModeProvider =
+    AsyncNotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);

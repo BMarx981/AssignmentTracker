@@ -6,11 +6,13 @@ import '../domain/merged.dart';
 import '../models/api_models.dart';
 import '../state/assignment_actions.dart';
 import '../state/student_providers.dart';
+import '../theme/app_theme.dart';
 import '../util/format.dart';
 
 /// Bottom sheet on mobile, side-anchored Dialog on web/desktop.
 Future<void> showCommentsPanel(
     BuildContext context, MergedItem item, MergedCourse course) async {
+  final colors = AppColors.of(context);
   final isWide = MediaQuery.of(context).size.width >= 800;
   if (isWide || kIsWeb && MediaQuery.of(context).size.width >= 600) {
     await showDialog(
@@ -20,7 +22,7 @@ Future<void> showCommentsPanel(
         return Align(
           alignment: Alignment.centerRight,
           child: Material(
-            color: Colors.white,
+            color: colors.card,
             elevation: 6,
             child: SizedBox(
               width: 420,
@@ -35,7 +37,7 @@ Future<void> showCommentsPanel(
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: colors.card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -80,6 +82,7 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final student = ref.watch(selectedStudentProvider).value;
     final threads = student?.comments[widget.item.key] ?? const [];
     final actions = ref.read(assignmentActionsProvider);
@@ -103,8 +106,8 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(widget.course.name,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF666666))),
+                        style: TextStyle(
+                            fontSize: 12, color: colors.textSecondary)),
                   ],
                 ),
               ),
@@ -118,17 +121,17 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
         const Divider(height: 1),
         Expanded(
           child: threads.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
                     child: Text('No comments yet — be the first.',
-                        style: TextStyle(color: Color(0xFF666666))),
+                        style: TextStyle(color: colors.textSecondary)),
                   ),
                 )
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   children: [
-                    for (final t in threads) _thread(actions, t),
+                    for (final t in threads) _thread(context, actions, t),
                   ],
                 ),
         ),
@@ -176,7 +179,9 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
     );
   }
 
-  Widget _thread(AssignmentActions actions, CommentThread t) {
+  Widget _thread(
+      BuildContext context, AssignmentActions actions, CommentThread t) {
+    final colors = AppColors.of(context);
     final replyCtrl =
         _replyCtrls.putIfAbsent(t.id, () => TextEditingController());
     final showReply = _openReplyFor.contains(t.id);
@@ -184,14 +189,14 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        border: Border.all(color: const Color(0xFFE3E3E3)),
+        color: colors.cardSubtle,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _meta(t.author, t.createdAt,
+          _meta(context, t.author, t.createdAt,
               onDelete: () => actions.deleteComment(
                   key: widget.item.key, commentId: t.id)),
           const SizedBox(height: 4),
@@ -202,14 +207,14 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: const Color(0xFFE3E3E3)),
+                  color: colors.card,
+                  border: Border.all(color: colors.border),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _meta(r.author, r.createdAt,
+                    _meta(context, r.author, r.createdAt,
                         onDelete: () => actions.deleteComment(
                               key: widget.item.key,
                               commentId: t.id,
@@ -281,7 +286,9 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
     );
   }
 
-  Widget _meta(String author, String createdAt, {required VoidCallback onDelete}) {
+  Widget _meta(BuildContext context, String author, String createdAt,
+      {required VoidCallback onDelete}) {
+    final colors = AppColors.of(context);
     return Row(
       children: [
         Text(author,
@@ -289,7 +296,7 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
                 fontSize: 12, fontWeight: FontWeight.w700)),
         const SizedBox(width: 6),
         Text(fmtCommentDate(createdAt),
-            style: const TextStyle(fontSize: 11, color: Color(0xFF666666))),
+            style: TextStyle(fontSize: 11, color: colors.textSecondary)),
         const Spacer(),
         TextButton(
           style: TextButton.styleFrom(
@@ -298,8 +305,8 @@ class _CommentsPanelContentState extends ConsumerState<_CommentsPanelContent> {
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           onPressed: onDelete,
-          child: const Text('Delete',
-              style: TextStyle(fontSize: 11, color: Color(0xFF8A1A1A))),
+          child: Text('Delete',
+              style: TextStyle(fontSize: 11, color: colors.dangerText)),
         ),
       ],
     );

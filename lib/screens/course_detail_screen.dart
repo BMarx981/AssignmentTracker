@@ -8,6 +8,7 @@ import '../state/data_providers.dart';
 import '../state/prefs_providers.dart';
 import '../state/priority_providers.dart';
 import '../state/student_providers.dart';
+import '../theme/app_theme.dart';
 import '../util/format.dart';
 import '../widgets/assignment_card.dart';
 import '../widgets/comments_panel.dart';
@@ -68,6 +69,7 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final thresholds = student.scoreThresholds as Map<String, int>;
     final outstanding = [
       for (final it in course.items)
@@ -97,17 +99,20 @@ class _Body extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: colors.card,
                   border: Border(
                     left: BorderSide(
                       width: 5,
-                      color: gradeBandColor(courseClass(
-                          course.synergyPercent ?? course.canvasAvgWithMissing,
-                          bands)),
+                      color: gradeBandColor(
+                          context,
+                          courseClass(
+                              course.synergyPercent ??
+                                  course.canvasAvgWithMissing,
+                              bands)),
                     ),
-                    top: const BorderSide(color: Color(0xFFE3E3E3)),
-                    right: const BorderSide(color: Color(0xFFE3E3E3)),
-                    bottom: const BorderSide(color: Color(0xFFE3E3E3)),
+                    top: BorderSide(color: colors.border),
+                    right: BorderSide(color: colors.border),
+                    bottom: BorderSide(color: colors.border),
                   ),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(8),
@@ -124,29 +129,29 @@ class _Body extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(course.teacher!,
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF666666))),
+                            style: TextStyle(
+                                fontSize: 12, color: colors.textSecondary)),
                       ),
                     const SizedBox(height: 6),
                     Text(synStatusLine,
-                        style: const TextStyle(
-                            fontSize: 12, color: Color(0xFF555555))),
+                        style: TextStyle(
+                            fontSize: 12, color: colors.textMuted)),
                     const SizedBox(height: 4),
                     Text('${outstanding.length} open',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF333333))),
+                            color: colors.textBody)),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
               if (outstanding.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
                   child: Center(
                     child: Text('No outstanding work flagged.',
-                        style: TextStyle(color: Color(0xFF555555))),
+                        style: TextStyle(color: colors.textMuted)),
                   ),
                 )
               else

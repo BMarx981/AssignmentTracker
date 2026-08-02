@@ -6,6 +6,7 @@ import '../domain/priority.dart';
 import '../models/api_models.dart';
 import '../state/assignment_actions.dart';
 import '../state/student_providers.dart';
+import '../theme/app_theme.dart';
 import '../util/gmail_launcher.dart';
 
 const _talkToTeacherLabel = '🗣 Talk to teacher';
@@ -56,6 +57,7 @@ class AssignmentActionsSheet extends ConsumerWidget {
 
   Widget _buildActionRow(
       BuildContext context, AssignmentActions actions, LocalStatus? ls) {
+    final colors = AppColors.of(context);
     final planned = ls?.plannedDate;
     final submitted = ls?.status == 'submitted_pending_feedback';
 
@@ -66,15 +68,13 @@ class AssignmentActionsSheet extends ConsumerWidget {
         planned != null
             ? _chip(
                 '📅 Plan: $planned',
-                background: const Color(0xFFD1FAE5),
-                foreground: const Color(0xFF065F46),
+                style: colors.success,
                 onTap: () => actions.clear(item.key),
                 trailing: const Icon(Icons.close, size: 14),
               )
             : _buttonChip(
                 '📅 Plan date',
-                background: const Color(0xFFE0E7FF),
-                foreground: const Color(0xFF1E3A8A),
+                style: colors.actionChip,
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: context,
@@ -97,15 +97,13 @@ class AssignmentActionsSheet extends ConsumerWidget {
         submitted
             ? _chip(
                 '✅ Submitted',
-                background: const Color(0xFFD1FAE5),
-                foreground: const Color(0xFF065F46),
+                style: colors.success,
                 onTap: () => actions.clear(item.key),
                 trailing: const Icon(Icons.close, size: 14),
               )
             : _buttonChip(
                 '✅ Already done',
-                background: const Color(0xFFE0E7FF),
-                foreground: const Color(0xFF1E3A8A),
+                style: colors.actionChip,
                 onTap: () => actions.markSubmittedNow(
                   key: item.key,
                   assignmentName: item.name,
@@ -118,11 +116,13 @@ class AssignmentActionsSheet extends ConsumerWidget {
 
   Widget _buildStatusButtons(
       BuildContext context, AssignmentActions actions, LocalStatus? ls) {
+    final colors = AppColors.of(context);
     final cpActive = ls?.status == 'complete_pending_submission';
     final spActive = ls?.status == 'submitted_pending_feedback';
     final buttons = <Widget>[];
     if (ls == null || cpActive) {
       buttons.add(_outlineButton(
+        colors,
         cpActive ? '✓ Complete (pending submit)' : 'Mark complete · pending',
         onPressed: () async {
           if (cpActive) {
@@ -141,6 +141,7 @@ class AssignmentActionsSheet extends ConsumerWidget {
     }
     if (ls == null || spActive) {
       buttons.add(_outlineButton(
+        colors,
         spActive ? '✓ Submitted (awaiting grade)' : 'Mark submitted · awaiting',
         onPressed: () async {
           if (spActive) {
@@ -159,6 +160,7 @@ class AssignmentActionsSheet extends ConsumerWidget {
     }
     if (ls != null) {
       buttons.add(_outlineButton(
+        colors,
         'Clear',
         onPressed: () => actions.clear(item.key),
       ));
@@ -168,6 +170,7 @@ class AssignmentActionsSheet extends ConsumerWidget {
 
   Widget _buildQuickNoteRow(
       BuildContext context, AssignmentActions actions, Student? student) {
+    final colors = AppColors.of(context);
     final threads = student?.comments[item.key] ?? const <CommentThread>[];
     return Wrap(
       spacing: 4,
@@ -179,11 +182,7 @@ class AssignmentActionsSheet extends ConsumerWidget {
             final posted = threads.any((t) => t.text == text);
             return _buttonChip(
               posted ? '✓ $label' : label,
-              background: posted
-                  ? const Color(0xFFD1FAE5)
-                  : const Color(0xFFF1F5F9),
-              foreground:
-                  posted ? const Color(0xFF065F46) : const Color(0xFF334155),
+              style: posted ? colors.success : colors.neutralChip,
               onTap: () async {
                 final messenger = ScaffoldMessenger.maybeOf(context);
                 await actions.postComment(key: item.key, text: text);
@@ -244,8 +243,7 @@ class AssignmentActionsSheet extends ConsumerWidget {
 
   Widget _chip(
     String label, {
-    required Color background,
-    required Color foreground,
+    required BadgeStyle style,
     VoidCallback? onTap,
     Widget? trailing,
   }) {
@@ -255,7 +253,7 @@ class AssignmentActionsSheet extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: background,
+          color: style.background,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -263,13 +261,14 @@ class AssignmentActionsSheet extends ConsumerWidget {
           children: [
             Text(label,
                 style: TextStyle(
-                    color: foreground,
+                    color: style.foreground,
                     fontSize: 12,
                     fontWeight: FontWeight.w600)),
             if (trailing != null) ...[
               const SizedBox(width: 4),
               IconTheme(
-                  data: IconThemeData(color: foreground), child: trailing),
+                  data: IconThemeData(color: style.foreground),
+                  child: trailing),
             ],
           ],
         ),
@@ -279,14 +278,12 @@ class AssignmentActionsSheet extends ConsumerWidget {
 
   Widget _buttonChip(
     String label, {
-    required Color background,
-    required Color foreground,
+    required BadgeStyle style,
     required VoidCallback onTap,
   }) =>
-      _chip(label,
-          background: background, foreground: foreground, onTap: onTap);
+      _chip(label, style: style, onTap: onTap);
 
-  Widget _outlineButton(String label,
+  Widget _outlineButton(AppColors colors, String label,
       {required VoidCallback onPressed, bool active = false}) {
     return OutlinedButton(
       onPressed: onPressed,
@@ -294,13 +291,11 @@ class AssignmentActionsSheet extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         minimumSize: const Size(0, 32),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        backgroundColor: active ? const Color(0xFFD1FAE5) : null,
+        backgroundColor: active ? colors.success.background : null,
         foregroundColor:
-            active ? const Color(0xFF065F46) : const Color(0xFF1A1A1A),
+            active ? colors.success.foreground : colors.textStrong,
         side: BorderSide(
-            color: active
-                ? const Color(0xFF065F46)
-                : const Color(0xFFCBD5E1)),
+            color: active ? colors.success.foreground : colors.border),
       ),
       child: Text(label, style: const TextStyle(fontSize: 12)),
     );
@@ -319,7 +314,7 @@ Future<void> showAssignmentActionsSheet(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    backgroundColor: Colors.white,
+    backgroundColor: AppColors.of(context).card,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
@@ -344,8 +339,8 @@ Future<void> showAssignmentActionsSheet(
               const SizedBox(height: 2),
               Text(
                 course.name,
-                style:
-                    const TextStyle(fontSize: 12, color: Color(0xFF666666)),
+                style: TextStyle(
+                    fontSize: 12, color: AppColors.of(ctx).textSecondary),
               ),
               const SizedBox(height: 12),
               AssignmentActionsSheet(item: item, course: course),

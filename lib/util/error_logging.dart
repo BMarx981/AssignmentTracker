@@ -65,20 +65,25 @@ class _CopyableErrorWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final message =
         '${details.exceptionAsString()}\n\n${details.stack ?? ''}';
+    // Reads platform brightness directly rather than Theme.of: this widget can
+    // be built when the failing subtree has no Theme ancestor.
+    final dark = MediaQuery.maybePlatformBrightnessOf(context) ==
+        Brightness.dark;
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Material(
-        color: const Color(0xFFFFF3F3),
+        color: dark ? const Color(0xFF2A1616) : const Color(0xFFFFF3F3),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: SingleChildScrollView(
               child: SelectableText(
                 message,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 12,
-                  color: Color(0xFF8B0000),
+                  color:
+                      dark ? const Color(0xFFFFB4AB) : const Color(0xFF8B0000),
                 ),
               ),
             ),

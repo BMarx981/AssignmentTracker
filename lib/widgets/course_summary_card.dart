@@ -3,19 +3,21 @@ import 'package:flutter/material.dart';
 import '../domain/merged.dart';
 import '../domain/priority.dart';
 import '../models/api_models.dart';
+import '../theme/app_theme.dart';
 import '../util/format.dart';
 
 /// Color band for the big percent text + left-edge accent.
-Color gradeBandColor(String band) {
+Color gradeBandColor(BuildContext context, String band) {
+  final c = AppColors.of(context);
   switch (band) {
     case 'bad':
-      return const Color(0xFFB71C1C);
+      return c.gradeBad;
     case 'warn':
-      return const Color(0xFFC77700);
+      return c.gradeWarn;
     case 'ok':
-      return const Color(0xFF1F7A3A);
+      return c.gradeOk;
     default:
-      return const Color(0xFF999999);
+      return c.gradeNone;
   }
 }
 
@@ -44,6 +46,7 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final course = widget.course;
 
     // One grade number, picked in priority order.
@@ -65,7 +68,7 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
       gradeSource = 'No grade yet';
     }
     final band = courseClass(p, widget.bands);
-    final accent = gradeBandColor(band);
+    final accent = gradeBandColor(context, band);
 
     // Two-pill summary: things-to-catch-up vs. already-pending.
     final synMiss = course.items
@@ -96,14 +99,10 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
 
     final pills = <Widget>[];
     if (toCatchUp > 0) {
-      pills.add(_pill('$toCatchUp to catch up', warn: true));
+      pills.add(_pill(context, '$toCatchUp to catch up', warn: true));
     }
     if (nPending > 0) {
-      pills.add(_pill(
-        '$nPending pending',
-        background: const Color(0xFFD1FAE5),
-        foreground: const Color(0xFF065F46),
-      ));
+      pills.add(_pill(context, '$nPending pending', style: colors.success));
     }
 
     return InkWell(
@@ -112,8 +111,8 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFE3E3E3)),
+          color: colors.card,
+          border: Border.all(color: colors.border),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -142,7 +141,7 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
                     child: Icon(
                       _gradesHidden ? Icons.visibility_off : Icons.visibility,
                       size: 16,
-                      color: const Color(0xFFAAAAAA),
+                      color: colors.iconMuted,
                     ),
                   ),
                 ),
@@ -150,6 +149,7 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
             ),
             const SizedBox(height: 8),
             _gradeRow(
+              colors: colors,
               source: gradeSource,
               percent: p,
               letter: course.synergyLetter,
@@ -166,6 +166,7 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
   }
 
   Widget _gradeRow({
+    required AppColors colors,
     required String source,
     required double? percent,
     required String? letter,
@@ -179,8 +180,8 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
         children: [
           Expanded(
             child: Text(source,
-                style: const TextStyle(
-                    fontSize: 11, color: Color(0xFF888888))),
+                style:
+                    TextStyle(fontSize: 11, color: colors.textFaint)),
           ),
           if (!_gradesHidden) ...[
             if (letter != null && letter.isNotEmpty)
@@ -200,12 +201,12 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
               ),
             ),
           ] else
-            const Text(
+            Text(
               '•••',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFFCCCCCC),
+                color: colors.gradeHidden,
                 height: 1,
               ),
             ),
@@ -214,30 +215,20 @@ class _CourseSummaryCardState extends State<CourseSummaryCard> {
     );
   }
 
-  Widget _pill(String text,
-      {bool warn = false, Color? background, Color? foreground}) {
-    Color bg;
-    Color fg;
-    if (background != null && foreground != null) {
-      bg = background;
-      fg = foreground;
-    } else if (warn) {
-      bg = const Color(0xFFFFE9C2);
-      fg = const Color(0xFF7C4A00);
-    } else {
-      bg = const Color(0xFFEEEEEE);
-      fg = const Color(0xFF333333);
-    }
+  Widget _pill(BuildContext context, String text,
+      {bool warn = false, BadgeStyle? style}) {
+    final colors = AppColors.of(context);
+    final s = style ?? (warn ? colors.zeroGraded : colors.neutralPill);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: bg,
+        color: s.background,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         text,
         style: TextStyle(
-            color: fg, fontSize: 10.5, fontWeight: FontWeight.w600),
+            color: s.foreground, fontSize: 10.5, fontWeight: FontWeight.w600),
       ),
     );
   }

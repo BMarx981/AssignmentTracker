@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router.dart';
+import 'state/prefs_providers.dart';
 import 'storage/credentials_store.dart';
+import 'theme/app_theme.dart';
 import 'util/error_logging.dart';
 
 void main() {
@@ -24,23 +26,30 @@ void main() {
   });
 }
 
-class TrackerApp extends StatelessWidget {
+class TrackerApp extends ConsumerStatefulWidget {
   const TrackerApp({super.key, required this.initialLocation});
 
   final String initialLocation;
 
   @override
+  ConsumerState<TrackerApp> createState() => _TrackerAppState();
+}
+
+class _TrackerAppState extends ConsumerState<TrackerApp> {
+  // Built once: rebuilding the router on every theme change would reset
+  // navigation state.
+  late final _router = buildRouter(initialLocation: widget.initialLocation);
+
+  @override
   Widget build(BuildContext context) {
-    final router = buildRouter(initialLocation: initialLocation);
+    final themeMode = ref.watch(themeModeProvider).value ?? ThemeMode.system;
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Assignment Tracker',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
-        scaffoldBackgroundColor: const Color(0xFFF6F7FB),
-      ),
-      routerConfig: router,
+      theme: buildLightTheme(),
+      darkTheme: buildDarkTheme(),
+      themeMode: themeMode,
+      routerConfig: _router,
     );
   }
 }

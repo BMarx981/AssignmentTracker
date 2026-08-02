@@ -9,6 +9,7 @@ import '../state/fetch_providers.dart';
 import '../state/prefs_providers.dart';
 import '../state/priority_providers.dart';
 import '../state/student_providers.dart';
+import '../theme/app_theme.dart';
 import '../util/format.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -32,6 +33,8 @@ class SettingsScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: const [
+                _AppearanceSection(),
+                SizedBox(height: 20),
                 _DateRangeSection(),
                 SizedBox(height: 20),
                 _GradeBandsSection(),
@@ -59,10 +62,11 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE3E3E3)),
+        color: colors.card,
+        border: Border.all(color: colors.border),
         borderRadius: BorderRadius.circular(8),
       ),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -75,6 +79,46 @@ class _Section extends StatelessWidget {
           const SizedBox(height: 8),
           child,
         ],
+      ),
+    );
+  }
+}
+
+// ---------- Appearance ----------
+
+class _AppearanceSection extends ConsumerWidget {
+  const _AppearanceSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(themeModeProvider).value ?? ThemeMode.system;
+    return _Section(
+      title: 'Appearance',
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SegmentedButton<ThemeMode>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(
+              value: ThemeMode.system,
+              label: Text('System'),
+              icon: Icon(Icons.brightness_auto_outlined, size: 16),
+            ),
+            ButtonSegment(
+              value: ThemeMode.light,
+              label: Text('Light'),
+              icon: Icon(Icons.light_mode_outlined, size: 16),
+            ),
+            ButtonSegment(
+              value: ThemeMode.dark,
+              label: Text('Dark'),
+              icon: Icon(Icons.dark_mode_outlined, size: 16),
+            ),
+          ],
+          selected: {mode},
+          onSelectionChanged: (sel) =>
+              ref.read(themeModeProvider.notifier).set(sel.first),
+        ),
       ),
     );
   }
@@ -255,9 +299,10 @@ class _ScoreThresholdsState extends ConsumerState<_ScoreThresholdsSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'A graded item is still actionable if its percent is at or below the threshold (0 = off).',
-            style: TextStyle(fontSize: 12, color: Color(0xFF666666)),
+            style: TextStyle(
+                fontSize: 12, color: AppColors.of(context).textSecondary),
           ),
           const SizedBox(height: 6),
           for (final c in courses)
@@ -471,15 +516,17 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
                           content: Text(ok
                               ? 'Saved.'
                               : 'Save did not stick — keychain write failed.'),
-                          backgroundColor:
-                              ok ? null : const Color(0xFF8A1A1A),
+                          backgroundColor: ok
+                              ? null
+                              : Theme.of(context).colorScheme.error,
                         ));
                       } catch (e) {
                         if (!mounted) return;
                         if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                           content: Text('Save failed: $e'),
-                          backgroundColor: const Color(0xFF8A1A1A),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.error,
                         ));
                       } finally {
                         if (mounted) setState(() => _busy = false);

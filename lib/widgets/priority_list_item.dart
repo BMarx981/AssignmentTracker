@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../domain/priority.dart';
 import '../models/api_models.dart';
 import '../state/priority_providers.dart';
+import '../theme/app_theme.dart';
 import '../util/format.dart';
 import 'status_badges.dart';
 
@@ -20,15 +21,16 @@ class PriorityListItem extends StatelessWidget {
     this.onTap,
   });
 
-  Color get _tierColor {
-    if (index < 3) return const Color(0xFFB71C1C);
-    if (index < 6) return const Color(0xFFC77700);
-    if (index < 10) return const Color(0xFF2D6CDF);
-    return const Color(0xFF999999);
+  Color _tierColor(AppColors c) {
+    if (index < 3) return c.tierHigh;
+    if (index < 6) return c.tierMedium;
+    if (index < 10) return c.tierLow;
+    return c.tierRest;
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
     final it = ranked.item;
     final c = ranked.course;
     final ls = getLocalStatus(it, statusByKey);
@@ -44,8 +46,9 @@ class PriorityListItem extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.only(bottom: 6),
           decoration: BoxDecoration(
-            border: Border(left: BorderSide(color: _tierColor, width: 4)),
-            color: Colors.white,
+            border:
+                Border(left: BorderSide(color: _tierColor(colors), width: 4)),
+            color: colors.card,
             borderRadius: const BorderRadius.only(
               topRight: Radius.circular(6),
               bottomRight: Radius.circular(6),
@@ -59,10 +62,10 @@ class PriorityListItem extends StatelessWidget {
                 width: 28,
                 child: Text(
                   '${index + 1}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF555555)),
+                      color: colors.textMuted),
                 ),
               ),
               const SizedBox(width: 6),
@@ -83,10 +86,10 @@ class PriorityListItem extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 2,
                         children: [
-                          _sub(c.name),
-                          _sub('· due ${it.date ?? '?'}'),
-                          _sub('· $standing'),
-                          ...statusBadgesFor(it, statusByKey),
+                          _sub(context, c.name),
+                          _sub(context, '· due ${it.date ?? '?'}'),
+                          _sub(context, '· $standing'),
+                          ...statusBadgesFor(context, it, statusByKey),
                         ],
                       ),
                     ),
@@ -101,10 +104,10 @@ class PriorityListItem extends StatelessWidget {
                     it.pointsPossible != null
                         ? '${_fmtNum(it.pointsPossible!)} pts'
                         : '—',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A1A)),
+                        color: colors.textStrong),
                   ),
                 ],
               ),
@@ -115,9 +118,10 @@ class PriorityListItem extends StatelessWidget {
     );
   }
 
-  Widget _sub(String text) => Text(
+  Widget _sub(BuildContext context, String text) => Text(
         text,
-        style: const TextStyle(fontSize: 12, color: Color(0xFF555555)),
+        style: TextStyle(
+            fontSize: 12, color: AppColors.of(context).textMuted),
       );
 
   String _fmtNum(double n) {
