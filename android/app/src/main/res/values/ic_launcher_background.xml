@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the dark navy plate in the launcher artwork so the adaptive
+         icon's masked edges blend into the foreground. -->
+    <color name="ic_launcher_background">#14183C</color>
+</resources>
