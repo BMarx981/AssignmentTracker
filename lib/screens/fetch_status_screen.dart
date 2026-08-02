@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:assignment_tracker_app/domain/fetch_error.dart';
+import 'package:assignment_tracker_app/router.dart';
 import 'package:assignment_tracker_app/state/fetch_providers.dart';
 import 'package:assignment_tracker_app/theme/app_theme.dart';
 
@@ -22,7 +22,7 @@ class FetchStatusScreen extends ConsumerWidget {
         title: const Text('Fetch status'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/settings'),
+          onPressed: () => context.back('/settings'),
         ),
       ),
       body: ListView(
@@ -41,7 +41,7 @@ class FetchStatusScreen extends ConsumerWidget {
                 .read(fetchStatusProvider.notifier)
                 .triggerCanvas()
                 .catchError((_) {}),
-            onOpenSettings: () => context.go('/settings'),
+            onOpenSettings: () => context.back('/settings'),
           ),
           const SizedBox(height: 12),
           _SourceCard(
@@ -53,7 +53,7 @@ class FetchStatusScreen extends ConsumerWidget {
                 .read(fetchStatusProvider.notifier)
                 .triggerSynergy()
                 .catchError((_) {}),
-            onOpenSettings: () => context.go('/settings'),
+            onOpenSettings: () => context.back('/settings'),
           ),
         ],
       ),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
 import 'package:assignment_tracker_app/pdf/sign_off_form_pdf.dart';
+import 'package:assignment_tracker_app/router.dart';
 import 'package:assignment_tracker_app/state/data_providers.dart';
 import 'package:assignment_tracker_app/state/prefs_providers.dart';
 import 'package:assignment_tracker_app/state/priority_providers.dart';
@@ -24,7 +24,7 @@ class SignOffFormScreen extends ConsumerWidget {
         title: const Text('Sign-off form'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.back('/'),
         ),
       ),
       body: (student == null || bands == null || range == null)

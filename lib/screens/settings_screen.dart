@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:assignment_tracker_app/dev/demo_seed.dart';
 import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/router.dart';
 import 'package:assignment_tracker_app/state/api_providers.dart';
 import 'package:assignment_tracker_app/state/data_providers.dart';
 import 'package:assignment_tracker_app/state/fetch_providers.dart';
@@ -25,7 +26,7 @@ class SettingsScreen extends ConsumerWidget {
         title: const Text('Settings'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.back('/'),
         ),
       ),
       body: LayoutBuilder(builder: (ctx, c) {
@@ -578,7 +579,7 @@ class _FetchSection extends ConsumerWidget {
         children: [
           FilledButton.icon(
             onPressed: () {
-              context.go('/fetch');
+              context.push('/fetch');
               // Fire-and-forget: the fetch screen reflects state.canvas live.
               // Swallow errors here; the screen surfaces 'error' state.
               ref
@@ -591,7 +592,7 @@ class _FetchSection extends ConsumerWidget {
           ),
           FilledButton.icon(
             onPressed: () {
-              context.go('/fetch');
+              context.push('/fetch');
               ref
                   .read(fetchStatusProvider.notifier)
                   .triggerSynergy()
@@ -601,7 +602,7 @@ class _FetchSection extends ConsumerWidget {
             label: const Text('Fetch Synergy'),
           ),
           OutlinedButton.icon(
-            onPressed: () => context.go('/fetch'),
+            onPressed: () => context.push('/fetch'),
             icon: const Icon(Icons.info_outline),
             label: const Text('View status'),
           ),

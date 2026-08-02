@@ -9,6 +9,7 @@ import 'package:assignment_tracker_app/state/data_providers.dart';
 import 'package:assignment_tracker_app/state/prefs_providers.dart';
 import 'package:assignment_tracker_app/state/priority_providers.dart';
 import 'package:assignment_tracker_app/state/student_providers.dart';
+import 'package:assignment_tracker_app/state/teacher_checkin_provider.dart';
 import 'package:assignment_tracker_app/theme/app_theme.dart';
 import 'package:assignment_tracker_app/widgets/catch_up_row.dart';
 import 'package:assignment_tracker_app/widgets/course_summary_card.dart';
@@ -30,15 +31,16 @@ class DashboardScreen extends ConsumerWidget {
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.read(dataProvider.notifier).refresh(),
           ),
+          const _TeacherCheckInButton(),
           IconButton(
             tooltip: 'Sign-off form',
             icon: const Icon(Icons.print_outlined),
-            onPressed: () => context.go('/signoff'),
+            onPressed: () => context.push('/signoff'),
           ),
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.go('/settings'),
+            onPressed: () => context.push('/settings'),
           ),
         ],
       ),
@@ -77,7 +79,7 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
     final range = ref.watch(dateRangeProvider).value;
 
     if (payload != null && payload.students.isEmpty) {
-      return _EmptyState(onSettings: () => context.go('/settings'));
+      return _EmptyState(onSettings: () => context.push('/settings'));
     }
     if (student == null || bands == null || range == null) {
       return const Center(child: CircularProgressIndicator());
@@ -174,7 +176,7 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
                           bands: bands,
                           statusByKey: student.assignmentStatus,
                           range: range,
-                          onTap: () => context.go(
+                          onTap: () => context.push(
                               '/course/${Uri.encodeComponent(cc.name)}'),
                         );
                       },
@@ -289,6 +291,27 @@ class _CatchUpGroup {
   final MergedCourse course;
   final List<MergedItem> items;
   const _CatchUpGroup({required this.course, required this.items});
+}
+
+/// AppBar entry to the teacher check-in list, badged with how many
+/// assignments are waiting on a teacher conversation. Hidden when empty so it
+/// doesn't advertise a screen with nothing on it.
+class _TeacherCheckInButton extends ConsumerWidget {
+  const _TeacherCheckInButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(teacherCheckInCountProvider);
+    if (count == 0) return const SizedBox.shrink();
+    return IconButton(
+      tooltip: 'Teacher check-ins',
+      icon: Badge.count(
+        count: count,
+        child: const Icon(Icons.forum_outlined),
+      ),
+      onPressed: () => context.push('/teacher-checkin'),
+    );
+  }
 }
 
 class _Summary extends StatelessWidget {
