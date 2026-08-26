@@ -1,7 +1,7 @@
 // Writes the demo dataset straight into the app's on-disk store, without
 // building or launching the app:
 //
-//   dart run tool/seed_demo_data.dart              # macOS container path
+//   dart run tool/seed_demo_data.dart              # macOS / Windows default path
 //   dart run tool/seed_demo_data.dart <state_dir>  # any other LocalStore root
 //
 // Restart the app afterwards; it reads these files on startup. For iOS or
@@ -21,11 +21,18 @@ const _macosStateDir =
     'Library/Containers/com.brianmarx.assignmentTrackerApp/Data/Library/'
     'Application Support/com.brianmarx.assignmentTrackerApp/state';
 
+/// Mirrors path_provider_windows, which builds the Application Support path
+/// from %APPDATA% plus the CompanyName / ProductName baked into the exe's
+/// version resource (windows/runner/Runner.rc). Must be kept in sync with
+/// that file once the Windows runner exists.
+const _windowsStateDir = r'com.brianmarx\assignment_tracker_app\state';
+
 Future<int> main(List<String> args) async {
-  final root = args.isNotEmpty ? args.first : _defaultMacosRoot();
+  final root = args.isNotEmpty ? args.first : _defaultRoot();
   if (root == null) {
     stderr.writeln(
-      'Could not determine the macOS store path. Pass one explicitly:\n'
+      'Could not determine the default store path on this OS. '
+      'Pass one explicitly:\n'
       '  dart run tool/seed_demo_data.dart <state_dir>',
     );
     return 1;
@@ -54,9 +61,16 @@ Future<int> main(List<String> args) async {
   return 0;
 }
 
-String? _defaultMacosRoot() {
-  if (!Platform.isMacOS) return null;
-  final home = Platform.environment['HOME'];
-  if (home == null || home.isEmpty) return null;
-  return '$home/$_macosStateDir';
+String? _defaultRoot() {
+  if (Platform.isMacOS) {
+    final home = Platform.environment['HOME'];
+    if (home == null || home.isEmpty) return null;
+    return '$home/$_macosStateDir';
+  }
+  if (Platform.isWindows) {
+    final appData = Platform.environment['APPDATA'];
+    if (appData == null || appData.isEmpty) return null;
+    return '$appData\\$_windowsStateDir';
+  }
+  return null;
 }

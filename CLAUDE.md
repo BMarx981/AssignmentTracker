@@ -5,7 +5,14 @@ Flutter port of the FastAPI dashboard at `../assignment-tracker/`. Targets iOS, 
 ## macOS notes
 
 - Sandbox is on by default. Network entitlements live in `macos/Runner/DebugProfile.entitlements` and `Release.entitlements` — `com.apple.security.network.client` is required for any outbound HTTP. Without it, calls fail silently.
-- Credentials use `flutter_secure_storage` (Keychain on macOS, same API as iOS).
+- Credentials are plain JSON in the sandboxed Application Support container (see `lib/storage/credentials_store.dart` for why not Keychain). `flutter_secure_storage` is a dependency but is only invoked on Windows.
+
+## Windows notes
+
+- No `windows/` runner yet — generate it on a Windows machine with `flutter create --platforms=windows --org com.brianmarx .` (Flutter cannot cross-compile Windows builds).
+- Credentials go through `flutter_secure_storage` (DPAPI) on Windows because `%APPDATA%` has no per-app sandbox. All other state stays in `LocalStore` JSON files.
+- The app icon is pre-built at `assets/icon/app_icon.ico`; copy it to `windows/runner/resources/app_icon.ico` after `flutter create` (the template drops in a default Flutter icon).
+- `tool/seed_demo_data.dart` derives its Windows default path from CompanyName/ProductName in `windows/runner/Runner.rc` — keep them in sync.
 
 ## Required versions
 
