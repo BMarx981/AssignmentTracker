@@ -4,11 +4,13 @@
 // There is no longer a FastAPI server in the loop — all data lives in
 // `LocalStore` and credentials in the OS keychain.
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:assignment_tracker_app/api/canvas_client.dart';
 import 'package:assignment_tracker_app/api/synergy_client.dart';
 import 'package:assignment_tracker_app/config/env.dart';
+import 'package:assignment_tracker_app/domain/canvas_token_status.dart';
 import 'package:assignment_tracker_app/domain/data_assembler.dart';
 import 'package:assignment_tracker_app/models/api_models.dart';
 import 'package:assignment_tracker_app/storage/credentials_store.dart';
@@ -49,6 +51,23 @@ final canvasClientProvider = FutureProvider<CanvasClient?>((ref) async {
         : Env.defaultCanvasBaseUrl,
     token: token,
   );
+});
+
+/// Lifetime of the saved Canvas token. Null when no token is set or Canvas
+/// can't be reached: being offline shouldn't read as "token rejected".
+final canvasTokenStatusProvider =
+    FutureProvider<CanvasTokenStatus?>((ref) async {
+  final client = await ref.watch(canvasClientProvider.future);
+  if (client == null) return null;
+  try {
+    final info = await client.fetchTokenInfo();
+    return info == null ? null : CanvasTokenStatus.fromJson(info);
+  } on DioException catch (e) {
+    if (e.response?.statusCode == 401) {
+      return const CanvasTokenStatus(rejected: true);
+    }
+    return null;
+  }
 });
 
 final synergyClientProvider = FutureProvider<SynergyClient?>((ref) async {

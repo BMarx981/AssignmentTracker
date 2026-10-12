@@ -64,19 +64,38 @@ class CanvasClient {
 
   // ---------- public API ----------
 
+  /// Canvas's record for this client's own token (`expires_at`,
+  /// `workflow_state`, `purpose`, …), or null when it can't be looked up.
+  ///
+  /// Canvas finds a token by its hint: the shard prefix plus the first five
+  /// characters after the `~` (`2873~az23v` for `2873~az23vn3B…`). A 401 means
+  /// the token itself is dead and is rethrown.
+  Future<Map<String, dynamic>?> fetchTokenInfo() async {
+    final tilde = token.indexOf('~');
+    if (tilde < 0 || token.length < tilde + 6) return null;
+    final hint = token.substring(0, tilde + 6);
+    try {
+      final (body, _) =
+          await _request('/users/self/tokens/${Uri.encodeComponent(hint)}');
+      final value = body.value;
+      return value is Map ? value.cast<String, dynamic>() : null;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
   /// Detects whether the token is a parent/observer or a student token, and
   /// returns the list of students we should fetch for.
   Future<({List<Map<String, dynamic>> students, bool isParent})>
       fetchAllStudents() async {
-    final Map<String, dynamic> profile;
-    try {
-      final (body, _) = await _request('/users/self/profile');
-      profile = (body.value is Map)
-          ? (body.value as Map).cast<String, dynamic>()
-          : const {};
-    } catch (_) {
-      return (students: const <Map<String, dynamic>>[], isParent: false);
-    }
+    // Errors propagate: this is the first call a fetch makes, so a 401 here is
+    // how an expired or revoked token surfaces. Swallowing it used to make a
+    // dead token look like an account with no students.
+    final (body, _) = await _request('/users/self/profile');
+    final profile = (body.value is Map)
+        ? (body.value as Map).cast<String, dynamic>()
+        : const <String, dynamic>{};
 
     final canvasUserId = profile['id'];
     final integrationId = (profile['integration_id'] as String?) ?? '';

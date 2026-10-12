@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:assignment_tracker_app/domain/canvas_token_status.dart';
 import 'package:assignment_tracker_app/domain/merged.dart';
 import 'package:assignment_tracker_app/domain/priority.dart';
 import 'package:assignment_tracker_app/models/api_models.dart';
+import 'package:assignment_tracker_app/state/api_providers.dart';
 import 'package:assignment_tracker_app/state/data_providers.dart';
 import 'package:assignment_tracker_app/state/prefs_providers.dart';
 import 'package:assignment_tracker_app/state/priority_providers.dart';
@@ -78,6 +80,7 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
     final bands = payload?.gradeBands;
     final courses = ref.watch(mergedCoursesProvider);
     final range = ref.watch(dateRangeProvider).value;
+    final tokenStatus = ref.watch(canvasTokenStatusProvider).value;
 
     if (payload != null && payload.students.isEmpty) {
       return _EmptyState(onSettings: () => context.push('/settings'));
@@ -99,6 +102,14 @@ class _DashboardBodyState extends ConsumerState<_DashboardBody> {
               : (c.maxWidth >= 600 ? 3 : 2);
           return CustomScrollView(
             slivers: [
+              if (tokenStatus != null &&
+                  tokenStatus.needsAttention(DateTime.now()))
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: _TokenBanner(status: tokenStatus),
+                  ),
+                ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
                 sliver: SliverToBoxAdapter(
@@ -297,6 +308,74 @@ class _CatchUpGroup {
 /// AppBar entry to the teacher check-in list, badged with how many
 /// assignments are waiting on a teacher conversation. Hidden when empty so it
 /// doesn't advertise a screen with nothing on it.
+/// Nags about a Canvas token that is about to expire or already dead, since
+/// either way the assignment list silently stops updating.
+class _TokenBanner extends StatelessWidget {
+  const _TokenBanner({required this.status});
+
+  final CanvasTokenStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppColors.of(context);
+    final now = DateTime.now();
+    final days = status.daysLeft(now);
+    final dead = status.rejected || (days != null && days < 0);
+    final style = dead ? c.danger : c.dueSoon;
+    final headline = dead
+        ? 'Canvas token no longer works'
+        : switch (days) {
+            0 => 'Canvas token expires today',
+            1 => 'Canvas token expires tomorrow',
+            _ => 'Canvas token expires in $days days',
+          };
+    final body = dead
+        ? 'Assignments won\'t update until you add a new token in Settings.'
+        : 'Generate a new one in Canvas (Account → Settings → New Access '
+            'Token) and paste it in Settings.';
+    return Material(
+      color: style.background,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => context.push('/settings'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border:
+                Border.all(color: style.foreground.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              Icon(dead ? Icons.key_off_outlined : Icons.key_outlined,
+                  color: style.foreground),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      headline,
+                      style: TextStyle(
+                        color: style.foreground,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(body, style: TextStyle(color: style.foreground)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: style.foreground),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TeacherCheckInButton extends ConsumerWidget {
   const _TeacherCheckInButton();
 

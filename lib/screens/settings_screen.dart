@@ -519,12 +519,29 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
               child:
                   Center(child: CircularProgressIndicator(strokeWidth: 2))));
     }
+    // Describes the *saved* token; Save invalidates credentials, which
+    // re-runs the lookup.
+    final tokenStatus = ref.watch(canvasTokenStatusProvider).value;
+    final now = DateTime.now();
     return _Section(
       title: 'Credentials',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _field('Canvas token', _canvasToken, obscure: true),
+          _field(
+            'Canvas token',
+            _canvasToken,
+            obscure: true,
+            helper: tokenStatus?.rejected == false
+                ? tokenStatus!.describe(now)
+                : null,
+            helperColor: tokenStatus?.needsAttention(now) ?? false
+                ? AppColors.of(context).dangerText
+                : null,
+            error: tokenStatus?.rejected ?? false
+                ? tokenStatus!.describe(now)
+                : null,
+          ),
           _field('Canvas base URL', _canvasUrl,
               helper: _defaultUrlHelper(Env.defaultCanvasBaseUrl)),
           const SizedBox(height: 6),
@@ -603,7 +620,10 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
       'Optional: defaults to ${Uri.parse(url).host}';
 
   Widget _field(String label, TextEditingController ctrl,
-      {bool obscure = false, String? helper}) {
+      {bool obscure = false,
+      String? helper,
+      Color? helperColor,
+      String? error}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: TextField(
@@ -612,6 +632,11 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
         decoration: InputDecoration(
           labelText: label,
           helperText: helper,
+          helperStyle: helperColor == null
+              ? null
+              : TextStyle(color: helperColor, fontWeight: FontWeight.w600),
+          errorText: error,
+          errorMaxLines: 2,
           isDense: true,
           border: const OutlineInputBorder(),
         ),
