@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:assignment_tracker_app/config/env.dart';
 import 'package:assignment_tracker_app/dev/demo_seed.dart';
 import 'package:assignment_tracker_app/models/api_models.dart';
 import 'package:assignment_tracker_app/router.dart';
@@ -524,11 +525,13 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _field('Canvas token', _canvasToken, obscure: true),
-          _field('Canvas base URL', _canvasUrl),
+          _field('Canvas base URL', _canvasUrl,
+              helper: _defaultUrlHelper(Env.defaultCanvasBaseUrl)),
           const SizedBox(height: 6),
           _field('Synergy username', _synUser),
           _field('Synergy password', _synPass, obscure: true),
-          _field('Synergy base URL', _synUrl),
+          _field('Synergy base URL', _synUrl,
+              helper: _defaultUrlHelper(Env.defaultSynergyBaseUrl)),
           const SizedBox(height: 6),
           Align(
             alignment: Alignment.centerRight,
@@ -595,8 +598,12 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
     );
   }
 
+  /// "Optional: defaults to host" for a base URL field left blank.
+  String _defaultUrlHelper(String url) =>
+      'Optional: defaults to ${Uri.parse(url).host}';
+
   Widget _field(String label, TextEditingController ctrl,
-      {bool obscure = false}) {
+      {bool obscure = false, String? helper}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: TextField(
@@ -604,6 +611,7 @@ class _CredentialsState extends ConsumerState<_CredentialsSection> {
         obscureText: obscure,
         decoration: InputDecoration(
           labelText: label,
+          helperText: helper,
           isDense: true,
           border: const OutlineInputBorder(),
         ),
