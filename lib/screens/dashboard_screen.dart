@@ -36,6 +36,11 @@ class DashboardScreen extends ConsumerWidget {
           ),
           const _TeacherCheckInButton(),
           IconButton(
+            tooltip: 'Calendar',
+            icon: const Icon(Icons.calendar_month_outlined),
+            onPressed: () => context.push('/calendar'),
+          ),
+          IconButton(
             tooltip: 'Sign-off form',
             icon: const Icon(Icons.print_outlined),
             onPressed: () => context.push('/signoff'),

@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:assignment_tracker_app/dev/demo_data.dart';
 import 'package:assignment_tracker_app/dev/demo_seed.dart';
 import 'package:assignment_tracker_app/domain/assignment_situation.dart';
+import 'package:assignment_tracker_app/domain/calendar.dart';
 import 'package:assignment_tracker_app/domain/data_assembler.dart';
 import 'package:assignment_tracker_app/domain/merged.dart';
 import 'package:assignment_tracker_app/domain/priority.dart';
@@ -400,6 +401,31 @@ void main() {
     // ...and one that matches none of them, plus one with no date at all.
     expect(planned.any((d) => d != null && !presets.contains(d)), isTrue);
     expect(planned.any((d) => d == null), isTrue);
+  });
+
+  test('seeded Canvas events reach the calendar through the merge', () {
+    final today = DateTime.now();
+    final miloCal = buildCalendar(mergedFor('Milo'),
+        filter: const CalendarFilter(), today: today);
+    final events = {
+      for (final list in miloCal.values)
+        for (final e in list)
+          if (e.event != null) e.event!.title,
+    };
+    expect(events, hasLength(4));
+    // The book fair runs across two days, so it's on two days of the grid.
+    expect(
+      miloCal.values
+          .where((l) => l.any((e) => e.event?.title.startsWith('Book Fair') ?? false)),
+      hasLength(2),
+    );
+    // The poetry slam shares its day with an assignment due that day.
+    final slamDay = miloCal.values.firstWhere(
+        (l) => l.any((e) => e.event?.title.startsWith('Poetry Slam') ?? false));
+    expect(slamDay.any((e) => e.item != null), isTrue);
+
+    expect(studentNamed('Nora').canvas?.eventsError, isNotNull);
+    expect(mergedFor('Otis').expand((c) => c.events), hasLength(1));
   });
 
   test('demoFiles writes one file per student plus the shared three', () {

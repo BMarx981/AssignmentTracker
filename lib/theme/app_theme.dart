@@ -59,6 +59,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.dangerBodyText,
     required this.codeBackground,
     required this.codeForeground,
+    required this.courseAccents,
   });
 
   /// Card / panel background (was `Colors.white`).
@@ -135,6 +136,13 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color codeBackground;
   final Color codeForeground;
 
+  /// One accent per class on the calendar, assigned by `courseColorSlots`.
+  /// Kept clear of the grade-band red/amber/green so a class color never
+  /// reads as a grade. Wraps past eight classes.
+  final List<Color> courseAccents;
+
+  Color courseAccent(int slot) => courseAccents[slot % courseAccents.length];
+
   static AppColors of(BuildContext context) =>
       Theme.of(context).extension<AppColors>() ?? light;
 
@@ -177,6 +185,16 @@ class AppColors extends ThemeExtension<AppColors> {
     dangerBodyText: Color(0xFF4A1818),
     codeBackground: Color(0xFF2A1010),
     codeForeground: Color(0xFFEFD9D9),
+    courseAccents: [
+      Color(0xFF2D6CDF), // blue
+      Color(0xFFD9480F), // orange
+      Color(0xFF0C8599), // teal
+      Color(0xFF9C36B5), // purple
+      Color(0xFF5C940D), // olive
+      Color(0xFFC2255C), // raspberry
+      Color(0xFF795548), // brown
+      Color(0xFF3B5BDB), // indigo
+    ],
   );
 
   static const dark = AppColors(
@@ -218,6 +236,16 @@ class AppColors extends ThemeExtension<AppColors> {
     dangerBodyText: Color(0xFFE8C3BE),
     codeBackground: Color(0xFF241313),
     codeForeground: Color(0xFFEFD9D9),
+    courseAccents: [
+      Color(0xFF7BA7FF),
+      Color(0xFFFF9B5E),
+      Color(0xFF66D9E8),
+      Color(0xFFDA77F2),
+      Color(0xFFA9E34B),
+      Color(0xFFF783AC),
+      Color(0xFFC4A484),
+      Color(0xFF91A7FF),
+    ],
   );
 
   @override

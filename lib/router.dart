@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import 'screens/calendar_screen.dart';
 import 'screens/course_detail_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/fetch_status_screen.dart';
@@ -18,6 +19,12 @@ GoRouter buildRouter({required String initialLocation}) => GoRouter(
           path: '/course/:name',
           builder: (ctx, st) => CourseDetailScreen(
             courseName: Uri.decodeComponent(st.pathParameters['name'] ?? ''),
+          ),
+        ),
+        GoRoute(
+          path: '/calendar',
+          builder: (ctx, st) => CalendarScreen(
+            courseName: st.uri.queryParameters['course'],
           ),
         ),
         GoRoute(

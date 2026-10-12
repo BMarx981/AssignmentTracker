@@ -82,6 +82,10 @@ class MergedCourse {
   final double? canvasAvgWithMissing; // 0..1
   final List<MergedItem> items;
 
+  /// Canvas calendar events for this class (test days, field trips). Synergy
+  /// has no equivalent, so a Synergy-only course always has none.
+  final List<CanvasEvent> events;
+
   const MergedCourse({
     required this.name,
     this.teacher,
@@ -95,6 +99,7 @@ class MergedCourse {
     this.canvasAvgGraded,
     this.canvasAvgWithMissing,
     this.items = const [],
+    this.events = const [],
   });
 }
 
@@ -287,5 +292,6 @@ MergedCourse _buildMerged(CanvasCourse? cc, SynergyCourse? syn) {
     canvasAvgGraded: canvasAvgGraded,
     canvasAvgWithMissing: canvasAvgWithMissing,
     items: items,
+    events: cc?.events ?? const [],
   );
 }

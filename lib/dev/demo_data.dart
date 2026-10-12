@@ -36,16 +36,20 @@
 //   Study Skills 6    no teacher at all · unknown status · null points
 //   PE 6              healthy course, nothing outstanding
 //
+//   Math and Language Arts also carry Canvas calendar events: all-day,
+//   timed, one spanning two days, and one sharing a day with a due item.
+//
 //   Between them the six courses seed all six AssignmentState values, so every
 //   variant of the action sheet's current-state header is reachable, and four
 //   teacher check-in groups: one with two items, one whose marker has a reply
 //   (so ✓ leaves it alone), one on a teacher with no email, one on a course
 //   with no teacher.
 // Nora (990002) — Canvas + Synergy, high school. Source-disagreement rows and
-//   a Canvas course with no Synergy counterpart (silently dropped).
+//   a Canvas course with no Synergy counterpart (silently dropped). Her
+//   calendar-event fetch is recorded as failed (the calendar's error notice).
 // Otis (990003) — Canvas ONLY. Exercises the canvas-only-course branch,
 //   `shortCourseName`, Canvas worst-case grading, and the legacy string form
-//   of `current_grading_period`.
+//   of `current_grading_period`. One all-day Canvas event (field trip).
 // Pearl (990004) — Synergy ONLY. Zero-percent course, no-grade course (the
 //   distress fallback), and a course with no assignments at all.
 
@@ -841,6 +845,40 @@ Map<String, dynamic> _canvasAssignment(
   };
 }
 
+/// One Canvas calendar event in the trimmed shape `fetchCourseEvents` writes.
+///
+/// Timed events start at [hour] *local* time, so they land on [day] in any
+/// timezone. Pass [allDay] for the all-day shape (date only, no time math),
+/// and [spanDays] for an event that runs across several days.
+Map<String, dynamic> _canvasEvent(
+  DateTime anchor,
+  int id,
+  int day,
+  String title, {
+  bool allDay = false,
+  int hour = 15,
+  int hours = 1,
+  int spanDays = 0,
+  String? location,
+  String? description,
+}) {
+  final start = DateTime(anchor.year, anchor.month, anchor.day + day, hour);
+  final end = allDay
+      ? start
+      : DateTime(start.year, start.month, start.day + spanDays, hour + hours);
+  return {
+    'id': id,
+    'title': title,
+    'start_at': start.toUtc().toIso8601String(),
+    'end_at': end.toUtc().toIso8601String(),
+    'all_day': allDay,
+    'all_day_date': allDay ? _day(anchor, day) : null,
+    'location_name': location,
+    'html_url': 'https://demo.instructure.invalid/calendar?event_id=$id',
+    'description': description,
+  };
+}
+
 Map<String, dynamic> buildCanvasPayload(DateTime anchor) {
   return {
     'source': 'Canvas (demo data)',
@@ -869,6 +907,8 @@ Map<String, dynamic> buildCanvasPayload(DateTime anchor) {
           'end_date': _day(anchor, 20),
         },
         'courses': _noraCanvasCourses(anchor),
+        // Her event fetch "failed", so the calendar shows its error notice.
+        'events_error': 'Canvas calendar events could not be loaded (HTTP 403).',
         'generated_at': DateTime.now().toUtc().toIso8601String(),
       },
       {
@@ -896,6 +936,13 @@ List<Map<String, dynamic>> _miloCanvasCourses(DateTime anchor) => [
     'course_code': 'MATH6ACC',
     'current_score': 63.5,
     'current_grade': 'D',
+    'events': [
+      _canvasEvent(anchor, 7001, 3, 'Unit 4 Test [event · all day]',
+          allDay: true,
+          description: 'Ratios and rates. Calculators allowed on part 2.'),
+      _canvasEvent(anchor, 7002, -2, 'Math Lab Tutoring [event · timed]',
+          location: 'Room 214'),
+    ],
     'assignments': [
       _canvasAssignment(
         anchor,
@@ -949,6 +996,13 @@ List<Map<String, dynamic>> _miloCanvasCourses(DateTime anchor) => [
     'course_code': 'LA6',
     'current_score': 57.0,
     'current_grade': 'F',
+    'events': [
+      _canvasEvent(anchor, 7003, 7, 'Book Fair [event · spans two days]',
+          hour: 8, hours: 7, spanDays: 1, location: 'Library'),
+      // Same day as a due assignment, so the day list mixes both kinds.
+      _canvasEvent(anchor, 7004, 0, 'Poetry Slam [event · shares a due day]',
+          hour: 13, location: 'Auditorium'),
+    ],
     'assignments': [
       _canvasAssignment(
         anchor,
@@ -1105,6 +1159,10 @@ List<Map<String, dynamic>> _otisCanvasCourses(DateTime anchor) => [
     'course_code': 'GEO7',
     'current_score': 50.0,
     'current_grade': 'F',
+    'events': [
+      _canvasEvent(anchor, 7101, 5, 'Museum Field Trip [event · all day]',
+          allDay: true),
+    ],
     'assignments': [
       _canvasAssignment(
         anchor,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:assignment_tracker_app/domain/merged.dart';
 import 'package:assignment_tracker_app/domain/priority.dart';
@@ -41,6 +42,14 @@ class CourseDetailScreen extends ConsumerWidget {
           onPressed: () => context.back('/'),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Calendar',
+            icon: const Icon(Icons.calendar_month_outlined),
+            onPressed: () => context.push(Uri(
+              path: '/calendar',
+              queryParameters: {'course': course?.name ?? courseName},
+            ).toString()),
+          ),
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh),

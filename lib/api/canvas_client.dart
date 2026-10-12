@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:html/parser.dart' as html_parser;
 
 /// Talks directly to the Canvas LMS REST API.
 ///
@@ -226,6 +227,55 @@ class CanvasClient {
         .toList(growable: false);
   }
 
+  /// Course calendar events (not assignments: `type` defaults to `event`, so
+  /// it isn't sent) from [from] to [to], keyed by course id.
+  ///
+  /// Parents go through `/users/:id/calendar_events`, the endpoint Canvas
+  /// documents for observers. Only documented params are sent: observer
+  /// tokens have twice answered unrecognized ones with a silent empty list.
+  /// Canvas caps `context_codes[]` at 10 per request, hence the batching.
+  Future<Map<int, List<Map<String, dynamic>>>> fetchCourseEvents(
+    List<int> courseIds, {
+    required int canvasUserId,
+    required bool isParent,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final path =
+        isParent ? '/users/$canvasUserId/calendar_events' : '/calendar_events';
+    final out = <int, List<Map<String, dynamic>>>{};
+    for (var i = 0; i < courseIds.length; i += 10) {
+      final batch = courseIds.skip(i).take(10);
+      final raw = await _getAll(path, {
+        'context_codes[]': [for (final id in batch) 'course_$id'],
+        'start_date': _isoDate(from),
+        'end_date': _isoDate(to),
+      });
+      for (final e in raw) {
+        final m = (e as Map).cast<String, dynamic>();
+        if (m['workflow_state'] == 'deleted' || m['hidden'] == true) continue;
+        final ctx = (m['context_code'] as String?) ?? '';
+        final cid = int.tryParse(ctx.replaceFirst('course_', ''));
+        if (cid == null) continue;
+        final desc = m['description'] as String?;
+        (out[cid] ??= []).add({
+          'id': m['id'],
+          'title': m['title'],
+          'start_at': m['start_at'],
+          'end_at': m['end_at'],
+          'all_day': m['all_day'],
+          'all_day_date': m['all_day_date'],
+          'location_name': m['location_name'],
+          'html_url': m['html_url'],
+          'description': desc == null || desc.isEmpty
+              ? null
+              : html_parser.parseFragment(desc).text?.trim(),
+        });
+      }
+    }
+    return out;
+  }
+
   /// Builds the per-student payload — same shape `canvas_fetch.py` writes for
   /// one student. Pluggable into `CanvasData.fromJson`.
   Future<Map<String, dynamic>> processStudent(
@@ -304,12 +354,38 @@ class CanvasClient {
       });
     }
 
+    // Half a year either side covers the school year from any point in it.
+    // A failure here costs the calendar its events, not the fetch its
+    // assignments, so it's recorded rather than thrown.
+    String? eventsError;
+    try {
+      final now = DateTime.now();
+      final events = await fetchCourseEvents(
+        [for (final c in outCourses) c['id'] as int],
+        canvasUserId: canvasUid,
+        isParent: isParent,
+        from: now.subtract(const Duration(days: 183)),
+        to: now.add(const Duration(days: 183)),
+      );
+      for (final c in outCourses) {
+        c['events'] = events[c['id']] ?? const <Map<String, dynamic>>[];
+      }
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      eventsError = code == null
+          ? 'Canvas calendar events could not be loaded.'
+          : 'Canvas calendar events could not be loaded (HTTP $code).';
+    } catch (_) {
+      eventsError = 'Canvas calendar events could not be loaded.';
+    }
+
     return {
       'student_id': student['student_id'],
       'name': student['name'],
       'canvas_user_id': canvasUid,
       'current_grading_period': currentGradingPeriod,
       'courses': outCourses,
+      'events_error': eventsError,
       'generated_at': DateTime.now().toUtc().toIso8601String(),
     };
   }

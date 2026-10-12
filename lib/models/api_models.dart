@@ -155,15 +155,84 @@ class CanvasAssignment {
   );
 }
 
+/// A course calendar event from Canvas — the things on the Canvas calendar
+/// that aren't assignments: test days, field trips, no-school days.
+class CanvasEvent {
+  final String id;
+  final String title;
+  final DateTime? startAt; // local time
+  final DateTime? endAt; // local time
+  final bool allDay;
+
+  /// `YYYY-MM-DD` Canvas sends for all-day events. Used as-is: converting an
+  /// all-day event's midnight `start_at` through a timezone can shift it a day.
+  final String? allDayDate;
+  final String? locationName;
+  final String? htmlUrl;
+  final String? description; // plain text, tags stripped at fetch time
+
+  const CanvasEvent({
+    required this.id,
+    required this.title,
+    this.startAt,
+    this.endAt,
+    this.allDay = false,
+    this.allDayDate,
+    this.locationName,
+    this.htmlUrl,
+    this.description,
+  });
+
+  factory CanvasEvent.fromJson(Map<String, dynamic> j) => CanvasEvent(
+    id: '${j['id'] ?? ''}',
+    title: (j['title'] as String?) ?? '(untitled event)',
+    startAt: DateTime.tryParse((j['start_at'] as String?) ?? '')?.toLocal(),
+    endAt: DateTime.tryParse((j['end_at'] as String?) ?? '')?.toLocal(),
+    allDay: j['all_day'] == true,
+    allDayDate: j['all_day_date'] as String?,
+    locationName: j['location_name'] as String?,
+    htmlUrl: j['html_url'] as String?,
+    description: j['description'] as String?,
+  );
+
+  /// Local `YYYY-MM-DD` days this event covers, first to last. A timed event
+  /// ending exactly at midnight doesn't spill onto the next day. Capped at two
+  /// weeks so a mis-entered end date can't paint a whole semester.
+  List<String> get days {
+    final ad = allDayDate;
+    if (allDay && ad != null && ad.length == 10) return [ad];
+    final s = startAt;
+    if (s == null) return const [];
+    var e = endAt ?? s;
+    if (e.isAfter(s) && e.hour == 0 && e.minute == 0 && e.second == 0) {
+      e = e.subtract(const Duration(seconds: 1));
+    }
+    final out = <String>[];
+    var d = DateTime(s.year, s.month, s.day);
+    final last = DateTime(e.year, e.month, e.day);
+    while (!d.isAfter(last) && out.length < 14) {
+      out.add(
+        '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}',
+      );
+      d = DateTime(d.year, d.month, d.day + 1);
+    }
+    return out;
+  }
+}
+
 class CanvasCourse {
   final String name;
   final List<CanvasAssignment> assignments;
+  final List<CanvasEvent> events;
   final double? avgWithMissing;
   final Map<String, dynamic> raw;
 
   const CanvasCourse({
     required this.name,
     this.assignments = const [],
+    this.events = const [],
     this.avgWithMissing,
     required this.raw,
   });
@@ -173,6 +242,10 @@ class CanvasCourse {
     assignments: _asList(
       j['assignments'],
       (e) => CanvasAssignment.fromJson(e as Map<String, dynamic>),
+    ),
+    events: _asList(
+      j['events'],
+      (e) => CanvasEvent.fromJson(e as Map<String, dynamic>),
     ),
     avgWithMissing:
         (j['avgWithMissing'] as num?)?.toDouble() ??
@@ -185,14 +258,20 @@ class CanvasData {
   final String? generatedAt;
   final String? currentGradingPeriod;
   final List<CanvasCourse> courses;
+
+  /// Why the calendar-event fetch failed, when it did. Assignments still load
+  /// in that case, so this is the only trace the calendar can show.
+  final String? eventsError;
   const CanvasData({
     this.generatedAt,
     this.currentGradingPeriod,
     this.courses = const [],
+    this.eventsError,
   });
 
   factory CanvasData.fromJson(Map<String, dynamic> j) => CanvasData(
     generatedAt: j['generated_at'] as String?,
+    eventsError: j['events_error'] as String?,
     // Canvas fetches store this as `{title, start_date, end_date}`; older
     // payloads stored just the title. Accept both — an `as String?` cast
     // on the map form throws and takes the whole assemble() down.

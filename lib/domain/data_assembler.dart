@@ -63,6 +63,7 @@ class DataAssembler {
           'generated_at': canvasTs,
           'current_grading_period': c['current_grading_period'],
           'courses': (c['courses'] as List?) ?? const [],
+          'events_error': c['events_error'],
         },
         'synergy': {
           'generated_at': synergyTs,
