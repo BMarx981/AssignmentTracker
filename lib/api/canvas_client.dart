@@ -172,11 +172,10 @@ class CanvasClient {
   }) async {
     if (isParent && studentCanvasId != null) {
       // Observer tokens silently 200-with-empty if Canvas sees unrecognized
-      // params, so we don't pass per_page/score_statistics here.
-      final assignments = await _getAll(
-        '/courses/$courseId/assignments',
-        {'order_by': 'due_at'},
-      );
+      // params, so we don't pass per_page/score_statistics here. order_by=due_at
+      // triggers it too (verified against mcpsmd 2026-10): every course came
+      // back empty. Callers key off due_at, so Canvas ordering isn't needed.
+      final assignments = await _getAll('/courses/$courseId/assignments');
       final subs = await _getAll(
         '/courses/$courseId/students/submissions',
         {

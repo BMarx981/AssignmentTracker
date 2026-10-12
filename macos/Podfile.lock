@@ -32,11 +32,11 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   flutter_secure_storage_darwin: 46e401699982ee74142909676535e0f6a7321e58
-  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
-  printing: c4cf83c78fd684f9bc318e6aadc18972aa48f617
+  FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
+  printing: 7916ffaaede65713863e621de9a4742d9fa723b9
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
 
-PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
+PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
 
 COCOAPODS: 1.16.2
